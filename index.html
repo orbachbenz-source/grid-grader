@@ -92,6 +92,27 @@ button.warn{border-color:var(--accent);color:var(--accent)}
 .vstatus .mono{color:var(--ink)}
 .fallback{position:absolute;inset:0;display:grid;place-items:center;padding:24px;text-align:center;color:var(--muted)}
 [hidden]{display:none!important}
+.pv{position:fixed;inset:0;z-index:30;background:var(--bg);display:grid;grid-template-rows:auto minmax(0,1fr);gap:10px;
+  padding:max(10px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(10px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.pv-top{display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-width:0}
+.pv-head{display:flex;flex-direction:column;gap:2px;min-width:0}
+.pv-head h2{margin:0;font-weight:700;font-stretch:72%;text-transform:uppercase;letter-spacing:.06em;font-size:17px}
+.pv-main{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:10px;min-height:0}
+.pv-view{position:relative;border:1px solid var(--line-strong);border-radius:6px;overflow:hidden;min-height:0;min-width:0;background:#212830}
+#pvCanvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:crosshair}
+.pv-status{position:absolute;left:0;right:0;bottom:0;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:5px 10px;font-size:11.5px;color:var(--muted);background:var(--veil);border-top:1px solid var(--line);pointer-events:none}
+.pv-status .mono{color:var(--ink)}
+.pv-side{background:var(--panel);border:1px solid var(--line);border-radius:6px;overflow:auto;min-height:0}
+.pvl{display:flex;flex-direction:column;gap:2px}
+.pvl label{display:grid;grid-template-columns:auto 14px minmax(0,1fr) auto;gap:8px;align-items:center;padding:4px 0;cursor:pointer}
+.pvl input{accent-color:var(--ink);margin:0}
+.pvl .aci{width:14px;height:14px;border-radius:2px;border:1px solid var(--line-strong)}
+.pvl .nm{font-family:var(--font-mono);font-size:12px;display:block}
+.pvl .ds{font-size:11.5px;color:var(--muted);display:block}
+.pvl em{font-style:normal;font-family:var(--font-mono);font-size:11.5px;color:var(--muted)}
+.pvl label.none{opacity:.5}
+@media (max-width:760px){ .pv{overflow:auto;display:block} .pv-main{grid-template-columns:minmax(0,1fr);margin-top:10px} .pv-view{height:62vh} .pv-side{margin-top:10px;overflow:visible} }
+.box3d{position:absolute;border:1px dashed var(--accent);background:var(--accent-soft);pointer-events:none;z-index:3}
 .ov3d{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:2}
 .layers{display:flex;flex-direction:column;gap:4px}
 .lg{display:flex;flex-direction:column;gap:6px}
@@ -266,7 +287,7 @@ img{max-width:100%}
       <button id="undoBtn" title="Undo (Ctrl+Z)">Undo</button>
       <button id="redoBtn" title="Redo (Ctrl+Shift+Z)">Redo</button>
       <button id="impHdr" class="primary">Import DXF</button>
-      <button id="expBtn">Export DXF</button>
+      <button id="expBtn">Preview &amp; export</button>
       <button id="dataBtn">Save / load</button>
       <button id="newBtn">New site</button>
       <button id="sampleBtn">Load sample</button>
@@ -284,6 +305,7 @@ img{max-width:100%}
         <div class="layers">
           <div class="lg">
             <span class="eyebrow">While grading</span>
+            <label class="lrow"><input type="checkbox" id="oGridPts"><span>Grid points<span class="sub">Show and edit grid points. Turn off to grade with underlay points only</span></span><span class="where">Plan · 3D</span></label>
             <label class="lrow"><input type="checkbox" id="oSlope"><span>Block slopes<span class="sub">Steepest slope and fall direction on each grid square</span></span><span class="where">Plan · 3D</span></label>
             <label class="lrow"><input type="checkbox" id="oSpots"><span>Edited spot elevations<span class="sub">Labels on every point you’ve set</span></span><span class="where">Plan · 3D</span></label>
             <label class="lrow" id="rowCf"><input type="checkbox" id="oCf"><span>Cut / fill depth<span class="sub">How far each block was raised or lowered</span></span><span class="where">Plan · 3D</span></label>
@@ -396,6 +418,7 @@ img{max-width:100%}
     <section class="view" id="view3d" aria-label="3D terrain model">
       <div class="v3d" id="v3d"></div>
       <canvas class="ov3d" id="ov3d" aria-hidden="true"></canvas>
+      <div class="box3d" id="box3d" hidden></div>
       <div class="tag3d" id="tag3d" hidden></div>
       <div class="vbar">
         <span class="vtitle">3D</span>
@@ -403,7 +426,7 @@ img{max-width:100%}
         <select id="colorMode" aria-label="Colour terrain by"><option value="slope">Colour by slope</option><option value="elev">Colour by elevation</option><option value="cutfill">Colour by cut / fill</option></select>
         <button id="reset3d">Reset view</button>
       </div>
-      <div class="vstatus"><span>Drag a point up or down to regrade it (Alt for fine steps) · middle-drag or drag empty space to orbit · Shift+middle or right-drag to pan · scroll zooms to the cursor</span></div>
+      <div class="vstatus"><span>Drag a point up or down to regrade it (Alt for fine steps) · Shift/Ctrl-click or Shift-drag a box to select several · middle-drag to orbit · Shift+middle or right-drag to pan · scroll zooms to the cursor</span></div>
       <div class="fallback" id="v3dMsg" hidden>The 3D model needs WebGL, which isn't available in this browser. The plan view still works.</div>
     </section>
   </main>
@@ -463,22 +486,43 @@ img{max-width:100%}
   </div>
 </div>
 
-<div class="modal" id="expModal" hidden>
-  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="expTitle">
-    <div class="sheet-head"><h2 id="expTitle">Export to AutoCAD</h2><button id="expClose" class="ghost">Close</button></div>
-    <p class="note">Writes an AutoCAD R12 DXF in your drawing's original units and coordinates, so it lines up when you xref or insert it at 0,0,0. Each item goes on its own layer.</p>
-    <div class="radio">
-      <label><input type="checkbox" id="exSpots" checked> Proposed spot elevations you set <span class="mono note">G-PROP-SPOT</span></label>
-      <label><input type="checkbox" id="exGrid"> All graded grid points <span class="mono note">G-PROP-GRID</span></label>
-      <label><input type="checkbox" id="exCont" checked> Proposed contours <span class="mono note">G-PROP-CONT-MINR / MAJR</span></label>
-      <label><input type="checkbox" id="exLim" checked> Grading limit <span class="mono note">G-GRAD-LIMT</span></label>
+<div class="pv" id="pv" hidden role="dialog" aria-modal="true" aria-labelledby="pvTitle">
+  <header class="pv-top">
+    <div class="pv-head"><h2 id="pvTitle">AutoCAD preview</h2><span class="note" id="pvSub">Exactly what the exported DXF contains, drawn the way it will look in model space.</span></div>
+    <div class="spacer"></div>
+    <div class="seg" id="pvBgSeg" role="group" aria-label="Background"><button data-bg="dark">Dark</button><button data-bg="light">White</button></div>
+    <button id="pvFit">Fit</button>
+    <button id="pvClose" class="primary">Back to editing</button>
+  </header>
+  <div class="pv-main">
+    <div class="pv-view" id="pvView">
+      <canvas id="pvCanvas"></canvas>
+      <div class="pv-status"><span>Scroll to zoom · drag to pan</span><span id="pvCoords" class="mono"></span></div>
     </div>
-    <div class="field"><label for="exTxt">Text height</label><div class="inline"><input id="exTxt" class="num sm" inputmode="decimal" value="0.25"><span class="unit">m on site</span></div></div>
-    <div class="field"><label for="exPrefix">Label prefix</label><div class="inline"><input id="exPrefix" class="txt" value="+" style="width:60px"><span class="note">e.g. + 100.25</span></div></div>
-    <div class="btnrow"><button id="expSave" class="primary">Download DXF</button><button id="expShow">Show DXF text</button></div>
-    <textarea id="expText" rows="6" readonly hidden></textarea>
-    <div class="btnrow" id="expCopyRow" hidden><button id="expCopy">Copy DXF text</button><span class="note">Paste into a text file and save it with a .dxf extension.</span></div>
-    <p class="msg" id="expMsg" role="status"></p>
+    <aside class="pv-side" aria-label="Export settings">
+      <section class="sec">
+        <h2>Layers in the DXF</h2>
+        <div id="pvLayers" class="pvl"></div>
+      </section>
+      <section class="sec">
+        <h2>Labels</h2>
+        <div class="field"><label for="exTxt">Text height</label><div class="inline"><input id="exTxt" class="num sm" inputmode="decimal" value="0.25"><span class="unit">m on site</span></div></div>
+        <div class="field"><label for="exPrefix">Label prefix</label><div class="inline"><input id="exPrefix" class="txt" value="+" style="width:60px"><span class="note">e.g. + 100.25</span></div></div>
+      </section>
+      <section class="sec">
+        <h2>Context</h2>
+        <label class="chk"><input type="checkbox" id="pvCtx" checked> Show my drawing underneath</label>
+        <p class="note">Your survey, proposed plan and linework, faded like an xref. They aren’t written to the export, because they’re already in your drawing.</p>
+      </section>
+      <section class="sec">
+        <h2>Export</h2>
+        <p class="note" id="pvUnits"></p>
+        <div class="btnrow"><button id="expSave" class="primary">Download DXF</button><button id="expShow">Show DXF text</button></div>
+        <textarea id="expText" rows="6" readonly hidden aria-label="DXF text"></textarea>
+        <div class="btnrow" id="expCopyRow" hidden><button id="expCopy">Copy DXF text</button><span class="note">Paste into a text file and save it with a .dxf extension.</span></div>
+        <p class="msg" id="expMsg" role="status"></p>
+      </section>
+    </aside>
   </div>
 </div>
 
@@ -588,14 +632,16 @@ function normalizeUL(o) {
   o.lines.forEach((l, k) => { if (Array.isArray(l) && l.length >= 4 && l.length % 2 === 0 && l.every(fin)) { lines.push(l); li.push(Array.isArray(o.li) && fin(o.li[k]) ? o.li[k] : 0); } });
   return lines.length ? { name: String(o.name || 'Proposed plan').slice(0, 120), layers, li, lines } : null;
 }
-const DEFAULT_V = { show: { slopeLabels: true, nodeLabels: true, flow: true, contours: true, grid3d: true, exPts: true, bg: true, ul: true, ulOut: false, spots: true, cf: false, prob: false, ghost: false }, exag: 3, colorMode: 'slope', layout: 'split' };
+const DEFAULT_V = { show: { slopeLabels: true, nodeLabels: true, flow: true, contours: true, grid3d: true, exPts: true, bg: true, ul: true, ulOut: false, gridPts: true, spots: true, cf: false, prob: false, ghost: false }, exag: 3, colorMode: 'slope', layout: 'split' };
 function normalizeV(o) {
   o = o || {};
   return {
     show: Object.assign({}, DEFAULT_V.show, o.show || {}),
     exag: Math.min(10, Math.max(1, num(o.exag, 3))),
     colorMode: ['slope', 'elev', 'cutfill'].includes(o.colorMode) ? o.colorMode : 'slope',
-    layout: ['split', 'plan', '3d'].includes(o.layout) ? o.layout : 'split'
+    layout: ['split', 'plan', '3d'].includes(o.layout) ? o.layout : 'split',
+    exp: o.exp && typeof o.exp === 'object' ? o.exp : {},
+    pvBg: o.pvBg === 'light' ? 'light' : 'dark'
   };
 }
 function normalizeEX(o) {
@@ -1001,6 +1047,21 @@ function buildGeometry() {
     g.exVer = exVer;
     g.xez = g.X.map(e => exAt(e.x, e.y));
   }
+  // unset underlay corners inside the grading area: selectable before they're edited
+  g.NT = N + g.X.length; g.P = []; g.pmap = new Map();
+  if (UL && V.show.ul && b && !g.tooMany) {
+    for (const l of UL.lines) {
+      for (let k = 0; k < l.length && g.P.length < 20000; k += 2) {
+        const x = l[k], y = l[k + 1];
+        if (!inGradeArea(x, y) || !(pip(x, y, dom) || nearPolyEdge(x, y, dom, 1e-6))) continue;
+        const key = xkey(x, y); if (g.pmap.has(key) || g.xmap.has(key)) continue;
+        const [u, v] = toLocal(x, y), i = Math.round(u / s), j = Math.round(v / s);
+        if (Math.abs(u - i * s) < g.tol && Math.abs(v - j * s) < g.tol) continue;
+        g.pmap.set(key, g.P.length); g.P.push({ x, y });
+      }
+    }
+  }
+  g.pez = EXI ? g.P.map(p => exAt(p.x, p.y)) : null;
 }
 function xkey(x, y) { return Math.round(x * 1000) + ',' + Math.round(y * 1000); }
 function bary(a, b, c, p) {
@@ -1048,13 +1109,20 @@ function spotNode(sp) {
   return nodeOfXY(sp.x, sp.y);
 }
 // vertex ids: 0..N-1 are grid nodes, N.. are off-grid control points
+// ids: grid nodes [0, N), set off-grid points [N, NT), unset underlay corners [NT, NT + P)
 const editable = (n) => n >= G.N ? true : (!G.hasEx || G.nodeIn[n] === 1);
-function vWorld(id) { return id < G.N ? nodeWorld(id) : [G.X[id - G.N].x, G.X[id - G.N].y]; }
-function vEz(id) { return id < G.N ? G.ez[id] : G.xez[id - G.N]; }
+const isP = (id) => id >= G.NT;
+const isGrid = (id) => id < G.N;
+function vWorld(id) { return id < G.N ? nodeWorld(id) : id < G.NT ? [G.X[id - G.N].x, G.X[id - G.N].y] : [G.P[id - G.NT].x, G.P[id - G.NT].y]; }
+function vEz(id) { return id < G.N ? G.ez[id] : id < G.NT ? G.xez[id - G.N] : G.pez[id - G.NT]; }
+function vZ(id) { return id < G.NT ? M.z[id] : M.pz[id - G.NT]; }
+function vSet(id) { return id < G.NT ? M.set[id] : 0; }
 function vInSite(id) { return id < G.N ? G.nodeIn[id] === 1 : true; }
+function vValid(id) { return id >= 0 && id < G.NT + G.P.length; }
 function vertexAt(x, y) {
   if (!G || G.tooMany) return -1;
   const k = G.xmap.get(xkey(x, y)); if (k !== undefined) return G.N + k;
+  const pk = G.pmap ? G.pmap.get(xkey(x, y)) : undefined; if (pk !== undefined) return G.NT + pk;
   const [u, v] = toLocal(x, y), i = Math.round(u / G.s), j = Math.round(v / G.s);
   if (Math.abs(u - i * G.s) < G.tol && Math.abs(v - j * G.s) < G.tol && i >= G.i0 && i <= G.i1 && j >= G.j0 && j <= G.j1) return nid(i, j);
   return -1;
@@ -1166,6 +1234,7 @@ function solveSurface(opt) {
   });
   if (!isFinite(zmin)) { zmin = zmax = num(S.defaultZ, 100); }
   M = { sig: G.fsig, f, z, fixed, set, merged, offGrid, outside, cellData, tris, contours, classArea, zmin, zmax, setCount, setIn, cut, fill, dmax: Math.max(dmax, 0.05) };
+  M.pz = G.P.map(p => zAtWorld(p.x, p.y));
 }
 
 function locateLocal(u, v) {
@@ -1400,8 +1469,18 @@ function drawUnderlay(hasB) {
   ctx.restore();
 }
 function drawExtras() {
-  if (!G || G.tooMany || !M || !G.X.length) return;
+  if (!G || G.tooMany || !M || (!G.X.length && !G.P.length)) return;
   const sel = UI.sel && UI.sel.kind === 'nodes' ? new Set(UI.sel.list) : null, cpx = G.s * T.k;
+  // unset underlay corners: hollow squares you can pick and group-select
+  if (G.P.length && (cpx >= 14 || G.P.length < 400)) {
+    ctx.strokeStyle = C.ul; ctx.fillStyle = C.site; ctx.lineWidth = 1.2;
+    G.P.forEach((p, k) => {
+      const id = G.NT + k, [x, y] = w2s(p.x, p.y);
+      if (x < -20 || x > W + 20 || y < -20 || y > HH + 20) return;
+      ctx.fillRect(x - 3, y - 3, 6, 6); ctx.strokeRect(x - 3, y - 3, 6, 6);
+      if ((sel && sel.has(id)) || UI.hover === id) htext(f2(M.pz[k]), x + 6, y - 5, `italic 500 11px ${MONO}`, C.ul, 'left', 'bottom');
+    });
+  }
   G.X.forEach((e, k) => {
     const id = G.N + k, [x, y] = w2s(e.x, e.y);
     if (x < -30 || x > W + 30 || y < -30 || y > HH + 30) return;
@@ -1519,11 +1598,15 @@ function drawCellLabels(cpx) {
 function drawNodes(cpx) {
   const showInterp = V.show.nodeLabels && cpx >= 58, showSet = V.show.spots && cpx >= 20, hasEx = G.hasEx;
   const N = G.nx * G.ny;
-  const selSet = UI.sel && UI.sel.kind === 'nodes' ? new Set(UI.sel.list) : null;
+  const selSet = UI.sel && UI.sel.kind === 'nodes' ? new Set(UI.sel.list) : null, gp = V.show.gridPts;
   for (let n = 0; n < N; n++) {
     if (!G.nodeActive[n]) continue;
     const [x, y] = w2s(...nodeWorld(n));
     if (x < -40 || x > W + 40 || y < -40 || y > HH + 40) continue;
+    if (!gp) {
+      if (M.set[n] && editable(n)) { ctx.strokeStyle = rgba(C.ink, 0.35); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x - 3.5, y); ctx.lineTo(x + 3.5, y); ctx.moveTo(x, y - 3.5); ctx.lineTo(x, y + 3.5); ctx.stroke(); }
+      continue;
+    }
     const hot = (selSet && selSet.has(n)) || UI.hover === n;
     if (hasEx && !G.nodeIn[n]) {
       ctx.fillStyle = rgba(C['ex-ink'], 0.8); ctx.beginPath(); ctx.arc(x, y, 1.8, 0, Math.PI * 2); ctx.fill();
@@ -1676,7 +1759,7 @@ function pickPlan(sx, sy) {
     G.X.forEach((e, k) => { const [x, y] = w2s(e.x, e.y), d = Math.hypot(x - sx, y - sy); if (d < bd) { bd = d; best = G.N + k; } });
     if (best >= 0) return { kind: 'v', id: best };
   }
-  const n = hitNode(sx, sy);
+  const n = V.show.gridPts ? hitNode(sx, sy) : -1;
   let dn = Infinity; if (n >= 0) { const [x, y] = w2s(...nodeWorld(n)); dn = Math.hypot(x - sx, y - sy); }
   if (ULI && V.show.ul) {
     const [wx, wy] = s2w(sx, sy), r = 8 / T.k, hb = S.boundary.length >= 3;
@@ -1731,7 +1814,8 @@ PC.addEventListener('pointerdown', (e) => {
     P.action = { type: 'pinch', d: Math.hypot(a.x - b.x, a.y - b.y), k: T.k, cx: (a.x + b.x) / 2, cy: (a.y + b.y) / 2, ox: T.ox, oy: T.oy };
     P.down = null; UI.box = null; return;
   }
-  P.down = { x: m.x, y: m.y, shift: e.shiftKey, ptype: e.pointerType };
+  const addKey = e.shiftKey || e.ctrlKey || e.metaKey;
+  P.down = { x: m.x, y: m.y, shift: addKey, ptype: e.pointerType };
   P.action = { type: 'maybe', ox: T.ox, oy: T.oy };
   if (UI.mode === 'boundary' && !UI.drawing && S.boundary.length >= 3) {
     const vi = hitVertex(m.x, m.y);
@@ -1746,7 +1830,7 @@ PC.addEventListener('pointerdown', (e) => {
       P.action = { type: 'vertex', i: ei + 1 }; invalidate('geom'); return;
     }
   }
-  if (UI.mode === 'select' && e.shiftKey) { P.action = { type: 'box' }; UI.box = { x0: m.x, y0: m.y, x1: m.x, y1: m.y }; }
+  if (UI.mode === 'select' && addKey) { P.action = { type: 'box' }; UI.box = { x0: m.x, y0: m.y, x1: m.x, y1: m.y }; }
 });
 PC.addEventListener('pointermove', (e) => {
   const m = mpos(e);
@@ -1777,15 +1861,17 @@ function endPointer(e) {
   if (a.type === 'vertex') { UI.snapPt = null; commit(); invalidate('geom'); }
   else if (a.type === 'box') {
     const bx = UI.box; UI.box = null;
+    if (Math.abs(bx.x1 - bx.x0) < 5 && Math.abs(bx.y1 - bx.y0) < 5) { handleClick(m, true, P.down.ptype); P.down = null; P.action = null; return; }
     if (G && !G.tooMany && M) {
       const x0 = Math.min(bx.x0, bx.x1), x1 = Math.max(bx.x0, bx.x1), y0 = Math.min(bx.y0, bx.y1), y1 = Math.max(bx.y0, bx.y1);
       const list = UI.sel && UI.sel.kind === 'nodes' ? UI.sel.list.slice() : [];
-      for (let n = 0; n < G.nx * G.ny; n++) {
+      for (let n = 0; n < G.nx * G.ny && V.show.gridPts; n++) {
         if (!G.nodeActive[n] || !editable(n) || list.includes(n)) continue;
         const [x, y] = w2s(...nodeWorld(n));
         if (x >= x0 && x <= x1 && y >= y0 && y <= y1) list.push(n);
       }
       G.X.forEach((e, k) => { const [x, y] = w2s(e.x, e.y); if (x >= x0 && x <= x1 && y >= y0 && y <= y1 && !list.includes(G.N + k)) list.push(G.N + k); });
+      G.P.forEach((p, k) => { const [x, y] = w2s(p.x, p.y); if (x >= x0 && x <= x1 && y >= y0 && y <= y1 && !list.includes(G.NT + k)) list.push(G.NT + k); });
       UI.sel = list.length ? { kind: 'nodes', list } : UI.sel;
     }
     invalidate('sel');
@@ -1827,7 +1913,7 @@ function updateHover(m) {
   let ht = null;
   if (UI.mode === 'select' && G && !G.tooMany && M) {
     if (UI.hover >= 0) ht = nodeTagHtml({ id: UI.hover });
-    else if (UI.ulHover && UI.ulHover.kind === 'pt' && pip(UI.ulHover.x, UI.ulHover.y, G.dom)) ht = nodeTagHtml({ pt: [UI.ulHover.x, UI.ulHover.y] }).replace('drag to set', 'click to set');
+    else if (UI.ulHover && UI.ulHover.kind === 'pt' && pip(UI.ulHover.x, UI.ulHover.y, G.dom)) ht = `<b>${f2(zAtWorld(UI.ulHover.x, UI.ulHover.y))}</b> <span class="d">underlay corner · outside the grading area</span>`;
   }
   if (ht && !P.down) {
     pt.innerHTML = ht; pt.hidden = false;
@@ -1848,6 +1934,7 @@ function handleClick(m, shift, ptype) {
     updateHint(); requestDraw(); return;
   }
   const pk = pickPlan(m.x, m.y), n = pk && pk.kind === 'v' ? pk.id : -1;
+  if (shift && UI.sel && UI.sel.kind === 'nodes' && n < 0) return;
   if (pk && pk.kind === 'pt') { UI.sel = { kind: 'pt', x: pk.x, y: pk.y }; UI.focusZ = ptype === 'mouse'; invalidate('sel'); return; }
   if (pk && pk.kind === 'line') { UI.sel = { kind: 'line', li: pk.li }; invalidate('sel'); return; }
   if (n >= 0) {
@@ -1912,16 +1999,19 @@ function flush() {
 
 /* ---------------- edits ---------------- */
 function removeSpotsAt(n) {
+  if (isP(n)) return;
   if (n >= G.N) { const X = G.X[n - G.N]; S.spots = S.spots.filter(sp => !(sp.o && xkey(sp.x, sp.y) === xkey(X.x, X.y))); xDirty = true; return; }
   S.spots = S.spots.filter(sp => spotNode(sp) !== n);
 }
 // returns the spot object for a vertex, creating it at its current elevation if needed (never reallocates S.spots)
 function ensureSpot(n) {
+  if (isP(n)) { const p = G.P[n - G.NT], sp = { x: r4(p.x), y: r4(p.y), z: r3(vZ(n)), o: 1 }; S.spots.push(sp); xDirty = true; return sp; }
   if (n >= G.N) { const X = G.X[n - G.N]; return S.spots[X.k]; }
   for (let k = S.spots.length - 1; k >= 0; k--) if (spotNode(S.spots[k]) === n) return S.spots[k];
   const [x, y] = nodeWorld(n), sp = { x: r4(x), y: r4(y), z: r3(M.z[n]) }; S.spots.push(sp); return sp;
 }
 function setSpotAt(n, val) {
+  if (isP(n)) { const p = G.P[n - G.NT]; putSpots([[p.x, p.y, val]]); xDirty = true; return true; }
   if (n >= G.N) { ensureSpot(n).z = r3(val); return true; }
   if (!editable(n)) return false;
   removeSpotsAt(n);
@@ -1998,7 +2088,7 @@ function updateHint() {
     if (UI.drawing) t = UI.drawing.length < 3 ? 'Click to place corners. They snap to drawing corners and survey points. Backspace removes the last one, Esc cancels.' : 'Click the first corner or double-click to close the grading area.';
     else if (S.boundary.length >= 3) t = 'Drag corners to move them. Drag a midpoint to add a corner. Alt-click a corner to delete it.';
     else t = 'Click to place the first corner.';
-  } else t = UL ? 'Click a grid point or an underlay corner to set its elevation, or click an underlay line to grade it. Drag points in 3D. Shift-drag to select several.' : 'Click a point to set its elevation, or drag points in the 3D view. Click a block to read its slopes. Shift-drag to select several.';
+  } else t = UL ? `Click ${V.show.gridPts ? 'a grid point or an underlay corner' : 'an underlay corner'} to set its elevation, or click an underlay line to grade it. Shift/Ctrl-click or Shift-drag to select several.` : 'Click a point to set its elevation, or drag points in the 3D view. Click a block to read its slopes. Shift-drag to select several.';
   $('#planHint').textContent = t;
 }
 function nbrSlopes(n) {
@@ -2033,7 +2123,8 @@ function renderInspector() {
     let extra = '';
     if (G.hasEx && S.boundary.length < 3) extra = '<p class="callout">Existing grades are loaded but there’s no grading area yet. Choose <b>Grading area</b> and outline the part you’re regrading.</p>';
     else if (!M.setCount) extra = G.hasEx ? '<p class="callout">No proposed spots yet, so the grading area matches existing grade. Set a spot or drag a point in 3D to start shaping it.</p>' : `<p class="callout">No spot elevations yet. The surface sits flat at ${f2(num(S.defaultZ, 100))} m until you set one.</p>`;
-    el.innerHTML = `<div class="eyebrow">Inspector</div><p class="muted">Click a grid point to set its elevation, or drag points up and down in the 3D view. Click a block to read its slopes. Arrow keys nudge selected points by 1 cm.</p>` + extra;
+    const what = V.show.gridPts ? 'a grid point or underlay corner' : 'an underlay corner';
+    el.innerHTML = `<div class="eyebrow">Inspector</div><p class="muted">Click ${what} to set its elevation, or drag points up and down in the 3D view. Shift- or Ctrl-click (or Shift-drag a box) to select several, even ones you haven\u2019t edited yet. Click a block to read its slopes. Arrow keys nudge selected points by 1 cm.</p>` + extra;
     return;
   }
   const rotated = Math.abs(num(S.rotation, 0)) > 0.01, hasEx = G.hasEx;
@@ -2082,38 +2173,38 @@ function renderInspector() {
     if (!editable(n)) {
       el.innerHTML = `<div class="ihead"><span class="eyebrow">Grid point</span><span class="tags"><span class="tag ex">Existing · locked</span></span></div>
         <div class="coord">E ${x.toFixed(2)} · N ${y.toFixed(2)}</div>
-        <div class="bigval">${f2(M.z[n])} <small>m</small></div>
+        <div class="bigval">${f2(vZ(n))} <small>m</small></div>
         <p class="note">This point is outside the grading area, so it stays at existing grade. Expand the grading area to regrade it.</p>
         <div class="btnrow"><button class="ghost" data-act="deselect">Clear selection</button></div>`;
       return;
     }
-    const isSet = M.set[n], inSite = vInSite(n), exz = hasEx ? vEz(n) : 0;
+    const isSet = vSet(n), inSite = vInSite(n), exz = hasEx ? vEz(n) : 0, zn = vZ(n), pend = isP(n);
     el.innerHTML = `
-      <div class="ihead"><span class="eyebrow">${isX ? 'Underlay point' : 'Grid point'}</span><span class="tags">${isSet ? '<span class="tag set">Set spot</span>' : '<span class="tag">Interpolated</span>'}${inSite || hasEx ? '' : '<span class="tag out">Outside area</span>'}</span></div>
+      <div class="ihead"><span class="eyebrow">${pend ? 'Underlay corner' : isX ? 'Underlay point' : 'Grid point'}</span><span class="tags">${isSet ? '<span class="tag set">Set spot</span>' : pend ? '<span class="tag ul">Not set</span>' : '<span class="tag">Interpolated</span>'}${inSite || hasEx ? '' : '<span class="tag out">Outside area</span>'}</span></div>
       <div class="coord">E ${x.toFixed(2)} · N ${y.toFixed(2)}</div>
-      <div class="zrow"><input id="nodeZ" class="txt big" inputmode="decimal" aria-label="Proposed elevation in metres" value="${f2(M.z[n])}"><button class="primary" data-act="setz">Set</button></div>
+      <div class="zrow"><input id="nodeZ" class="txt big" inputmode="decimal" aria-label="Proposed elevation in metres" value="${f2(zn)}"><button class="primary" data-act="setz">Set</button></div>
       <div class="nudge"><button data-act="nudge" data-d="-0.05">−0.05</button><button data-act="nudge" data-d="-0.01">−0.01</button><button data-act="nudge" data-d="0.01">+0.01</button><button data-act="nudge" data-d="0.05">+0.05</button></div>
-      ${hasEx ? `<dl class="kv"><dt>Existing</dt><dd>${f2(exz)} m</dd><dt>Change</dt><dd class="${M.z[n] - exz > 0.005 ? 'fill' : M.z[n] - exz < -0.005 ? 'cut' : ''}">${changeLine(M.z[n] - exz)}</dd></dl>` : ''}
-      ${isX ? '<p class="note">An off-grid point on your proposed linework. The surface passes exactly through it and the grid points around it follow.</p>' : `<div><div class="eyebrow" style="margin-bottom:4px">Slope to next point${rotated ? ' (grid directions)' : ''}</div><div class="nbrs">${nbrSlopes(n)}</div></div>`}
+      ${hasEx ? `<dl class="kv"><dt>Existing</dt><dd>${f2(exz)} m</dd><dt>Change</dt><dd class="${zn - exz > 0.005 ? 'fill' : zn - exz < -0.005 ? 'cut' : ''}">${changeLine(zn - exz)}</dd></dl>` : ''}
+      ${pend ? '<p class="note">A corner of your proposed linework. Setting it pins the surface to this exact point, even between grid points.</p>' : isX ? '<p class="note">An off-grid point on your proposed linework. The surface passes exactly through it and the grid points around it follow.</p>' : `<div><div class="eyebrow" style="margin-bottom:4px">Slope to next point${rotated ? ' (grid directions)' : ''}</div><div class="nbrs">${nbrSlopes(n)}</div></div>`}
       ${isSet ? `<div class="btnrow"><button data-act="clear">${hasEx || isX ? 'Remove spot' : 'Remove spot (interpolate)'}</button></div>` : '<p class="note">Type a value and press Enter, or drag the point in 3D, to make this a set spot.</p>'}
       <p class="msg" id="inspMsg" role="status"></p>`;
   } else if (sel.kind === 'nodes') {
-    const L = sel.list.filter(editable), nSet = L.filter(n => M.set[n]).length, locked = sel.list.length - L.length;
+    const L = sel.list.filter(editable), nSet = L.filter(n => vSet(n)).length, locked = sel.list.length - L.length;
     let pair = '';
     if (sel.list.length === 2 && L.length === 2) {
-      const [a, b] = L, [ax, ay] = vWorld(a), [bx, by] = vWorld(b), dist = Math.hypot(bx - ax, by - ay), g = (M.z[b] - M.z[a]) / dist;
+      const [a, b] = L, [ax, ay] = vWorld(a), [bx, by] = vWorld(b), dist = Math.hypot(bx - ax, by - ay), g = (vZ(b) - vZ(a)) / dist;
       pair = `
-        <dl class="kv"><dt>A → B</dt><dd>${dist.toFixed(2)} m</dd><dt>Change</dt><dd>${sgn2(M.z[b] - M.z[a])} m</dd><dt>Slope</dt><dd>${g >= 0 ? 'rises' : 'falls'} ${fp(g)} · ${ratio(g)}</dd></dl>
+        <dl class="kv"><dt>A → B</dt><dd>${dist.toFixed(2)} m</dd><dt>Change</dt><dd>${sgn2(vZ(b) - vZ(a))} m</dd><dt>Slope</dt><dd>${g >= 0 ? 'rises' : 'falls'} ${fp(g)} · ${ratio(g)}</dd></dl>
         <div><div class="eyebrow" style="margin-bottom:4px">Grade B from A</div>
         <div class="inline"><input id="gradePct" class="num sm" inputmode="decimal" value="2.0" aria-label="Slope percent"><span class="unit">%</span>
         <select id="gradeDir" aria-label="Direction"><option value="-1">falling</option><option value="1">rising</option></select>
         <button class="primary" data-act="grade">Apply</button></div></div>`;
     }
     el.innerHTML = `
-      <div class="ihead"><span class="eyebrow">${sel.list.length} grid points</span><span class="tags"><span class="tag">${nSet} set</span>${locked ? `<span class="tag ex">${locked} locked</span>` : ''}</span></div>
+      <div class="ihead"><span class="eyebrow">${sel.list.length} points</span><span class="tags"><span class="tag">${nSet} set</span>${locked ? `<span class="tag ex">${locked} locked</span>` : ''}</span></div>
       <div class="field"><label for="multiZ">Set all to</label><div class="inline"><input id="multiZ" class="num" inputmode="decimal" placeholder="100.00"><span class="unit">m</span><button data-act="setall" class="small">Set</button></div></div>
       <div class="field"><label for="multiD">Raise / lower</label><div class="inline"><input id="multiD" class="num" inputmode="decimal" placeholder="+0.10"><span class="unit">m</span><button data-act="raise" class="small">Apply</button></div></div>
-      <dl class="kv">${sel.list.slice(0, 8).map((n, k) => `<dt><span class="pl" style="color:var(--accent);font-weight:700">${ptLetter(k)}</span> ${n >= G.N ? 'underlay' : M.set[n] ? 'set' : editable(n) ? 'interpolated' : 'existing'}</dt><dd>${f2(M.z[n])} m</dd>`).join('')}${sel.list.length > 8 ? `<dt>…</dt><dd>${sel.list.length - 8} more</dd>` : ''}</dl>
+      <dl class="kv">${sel.list.slice(0, 8).map((n, k) => `<dt><span class="pl" style="color:var(--accent);font-weight:700">${ptLetter(k)}</span> ${isP(n) ? 'corner, not set' : n >= G.N ? 'underlay' : M.set[n] ? 'set' : editable(n) ? 'interpolated' : 'existing'}</dt><dd>${f2(vZ(n))} m</dd>`).join('')}${sel.list.length > 8 ? `<dt>…</dt><dd>${sel.list.length - 8} more</dd>` : ''}</dl>
       ${pair}
       <p class="note">Drag any selected point in 3D to move them all together.</p>
       <div class="btnrow">${sel.list.length === 2 ? '<button data-act="swapab">Swap A and B</button>' : ''}${nSet ? '<button data-act="clearall">Remove set spots</button>' : ''}<button class="ghost" data-act="deselect">Clear selection</button></div>
@@ -2174,7 +2265,7 @@ $('#insp').addEventListener('keydown', (e) => {
 function nudgeSel(d) {
   if (!UI.sel || UI.sel.kind !== 'nodes' || !M) return;
   const L = UI.sel.list.filter(editable); if (!L.length) return;
-  const base = L.map(n => M.z[n]);
+  const base = L.map(n => vZ(n));
   applyNodes(() => L.forEach((n, k) => setSpotAt(n, base[k] + d)));
 }
 function doAct(act, btn) {
@@ -2218,8 +2309,8 @@ function doAct(act, btn) {
   else if (act === 'grade' && L.length === 2) {
     const pct = num($('#gradePct').value, NaN), dir = num($('#gradeDir').value, -1);
     if (!isFinite(pct)) { inspMsg('Enter a slope percentage.'); return; }
-    const [a, b] = L, [ax, ay] = vWorld(a), [bx, by] = vWorld(b), dist = Math.hypot(bx - ax, by - ay), za = M.z[a];
-    applyNodes(() => { if (!M.set[a]) setSpotAt(a, za); setSpotAt(b, za + dir * Math.abs(pct) / 100 * dist); });
+    const [a, b] = L, [ax, ay] = vWorld(a), [bx, by] = vWorld(b), dist = Math.hypot(bx - ax, by - ay), za = vZ(a);
+    applyNodes(() => { if (!vSet(a)) setSpotAt(a, za); setSpotAt(b, za + dir * Math.abs(pct) / 100 * dist); });
   }
 }
 function lineAct(act, li) {
@@ -2273,7 +2364,7 @@ function syncControls() {
   $('#oUl').checked = V.show.ul; $('#oUlOut').checked = V.show.ulOut;
   $('#oUl').closest('label').hidden = !UL; $('#oUlOut').closest('label').hidden = !UL;
   $('#lgDrawing').hidden = !EXI && !UL && !BG;
-  $('#oSpots').checked = V.show.spots; $('#oProb').checked = V.show.prob;
+  $('#oSpots').checked = V.show.spots; $('#oProb').checked = V.show.prob; $('#oGridPts').checked = V.show.gridPts;
   $('#oCf').checked = V.show.cf && !!EXI; $('#oCf').disabled = !EXI; $('#rowCf').classList.toggle('off', !EXI);
   $('#oGhost').checked = V.show.ghost && !!EXI; $('#oGhost').disabled = !EXI; $('#rowGhost').classList.toggle('off', !EXI);
   $('#rowCf').title = EXI ? '' : 'Import existing grades to compare against'; $('#rowGhost').title = $('#rowCf').title;
@@ -2322,9 +2413,16 @@ for (let k = 0; k < 5; k++) $('#th' + k).addEventListener('change', () => {
   if (!okv) { $('#thMsg').textContent = 'Breaks must be positive and increase left to right.'; return; }
   $('#thMsg').textContent = ''; S.thresholds = vals; commit(); invalidate('surf');
 });
-const showMap = { oSlope: 'slopeLabels', oNodes: 'nodeLabels', oFlow: 'flow', oCont: 'contours', o3dGrid: 'grid3d', oEx: 'exPts', oBg: 'bg', oUl: 'ul', oUlOut: 'ulOut', oSpots: 'spots', oCf: 'cf', oProb: 'prob', oGhost: 'ghost' };
-const show3dRebuild = ['oCont', 'o3dGrid', 'oEx', 'oUl', 'oUlOut', 'oProb', 'oGhost'];
-Object.keys(showMap).forEach(id => $('#' + id).addEventListener('change', (e) => { V.show[showMap[id]] = e.target.checked; persist(); invalidate(show3dRebuild.includes(id) ? 'd3' : 'side'); render3D(); }));
+const showMap = { oSlope: 'slopeLabels', oNodes: 'nodeLabels', oFlow: 'flow', oCont: 'contours', o3dGrid: 'grid3d', oEx: 'exPts', oBg: 'bg', oUl: 'ul', oUlOut: 'ulOut', oSpots: 'spots', oCf: 'cf', oProb: 'prob', oGhost: 'ghost', oGridPts: 'gridPts' };
+const show3dRebuild = ['oCont', 'o3dGrid', 'oEx', 'oUlOut', 'oProb', 'oGhost', 'oGridPts'];
+Object.keys(showMap).forEach(id => $('#' + id).addEventListener('change', (e) => {
+  V.show[showMap[id]] = e.target.checked; persist();
+  if (id === 'oGridPts' && !V.show.gridPts && UI.sel && UI.sel.kind === 'nodes' && G && !G.tooMany) { UI.sel.list = UI.sel.list.filter(n => !isGrid(n)); if (!UI.sel.list.length) UI.sel = null; }
+  if (id === 'oUl') { if (UI.sel && UI.sel.kind === 'nodes' && G && !G.tooMany) UI.sel.list = UI.sel.list.filter(n => !isP(n)); invalidate('geom'); }
+  else invalidate(show3dRebuild.includes(id) ? 'd3' : 'side');
+  if (id === 'oGridPts') invalidate('sel');
+  render3D();
+}));
 let ulArm = 0;
 $('#ulClear').addEventListener('click', (e) => {
   const btn = e.currentTarget;
@@ -2864,42 +2962,108 @@ function chainSegs(segs) {
   }
   return out;
 }
+// layers written to the export DXF: [name, AutoCAD colour index, checkbox id, description]
+const EXP_LAYERS = [
+  ['G-PROP-SPOT', 1, 'exSpots', 'Spot elevations you set'],
+  ['G-PROP-GRID', 8, 'exGrid', 'Other graded grid points'],
+  ['G-PROP-CONT-MINR', 32, 'exCMin', 'Minor contours'],
+  ['G-PROP-CONT-MAJR', 30, 'exCMaj', 'Major contours (every 5th)'],
+  ['G-PROP-SLOP', 3, 'exSlope', 'Slope arrows per block'],
+  ['G-PROP-FEAT', 5, 'exFeat', 'Proposed linework at its graded elevation (3D)'],
+  ['G-GRAD-LIMT', 6, 'exLim', 'Grading limit']
+];
+const EXP_DEFAULT = { exSpots: true, exGrid: false, exCMin: true, exCMaj: true, exSlope: false, exFeat: false, exLim: true };
+function expOn(id) { const el = $('#' + id); return el ? el.checked : !!EXP_DEFAULT[id]; }
 function buildDxf() {
   if (!G || G.tooMany || !M) return null;
   const fxy = S.units.xy || 1, fz = S.units.z || 1, hb = S.boundary.length >= 3;
   const th = Math.max(0.01, num($('#exTxt').value, 0.25)) / fxy, pre = ($('#exPrefix').value || '').slice(0, 6);
   const P = (v) => (v / fxy).toFixed(4), L = [];
   const add = (...a) => { for (let i = 0; i < a.length; i += 2) L.push(String(a[i]), String(a[i + 1])); };
-  const layers = [['G-PROP-SPOT', 1], ['G-PROP-GRID', 8], ['G-PROP-CONT-MINR', 32], ['G-PROP-CONT-MAJR', 30], ['G-GRAD-LIMT', 6]];
   add(0, 'SECTION', 2, 'HEADER', 9, '$ACADVER', 1, 'AC1009', 0, 'ENDSEC');
-  add(0, 'SECTION', 2, 'TABLES', 0, 'TABLE', 2, 'LAYER', 70, layers.length);
-  layers.forEach(([n, c]) => add(0, 'LAYER', 2, n, 70, 0, 62, c, 6, 'CONTINUOUS'));
+  add(0, 'SECTION', 2, 'TABLES', 0, 'TABLE', 2, 'LAYER', 70, EXP_LAYERS.length);
+  EXP_LAYERS.forEach(([n, c]) => add(0, 'LAYER', 2, n, 70, 0, 62, c, 6, 'CONTINUOUS'));
   add(0, 'ENDTAB', 0, 'ENDSEC', 0, 'SECTION', 2, 'ENTITIES');
+  const cnt = {};
+  const line = (layer, x1, y1, z1, x2, y2, z2) => add(0, 'LINE', 8, layer, 10, P(x1), 20, P(y1), 30, P(z1), 11, P(x2), 21, P(y2), 31, P(z2));
+  const text = (layer, x, y, z, h, str, rot) => { add(0, 'TEXT', 8, layer, 10, (x / fxy).toFixed(4), 20, (y / fxy).toFixed(4), 30, P(z), 40, h.toFixed(4), 1, str); if (rot) add(50, rot.toFixed(3)); };
   const spot = (layer, x, y, z) => {
+    const r = th * 0.45 * fxy;
     add(0, 'POINT', 8, layer, 10, P(x), 20, P(y), 30, P(z));
-    add(0, 'TEXT', 8, layer, 10, (x / fxy + th * 0.6).toFixed(4), 20, (y / fxy + th * 0.4).toFixed(4), 30, P(z), 40, th.toFixed(4), 1, pre + (z / fz).toFixed(2));
+    line(layer, x - r, y, z, x + r, y, z); line(layer, x, y - r, z, x, y + r, z);
+    text(layer, x + th * 0.6 * fxy, y + th * 0.4 * fxy, z, th, pre + (z / fz).toFixed(2));
+    cnt[layer] = (cnt[layer] || 0) + 1;
   };
-  const poly = (layer, pts, closed, z) => {
-    add(0, 'POLYLINE', 8, layer, 66, 1, 10, 0, 20, 0, 30, P(z), 70, closed ? 1 : 0);
-    pts.forEach(p => add(0, 'VERTEX', 8, layer, 10, P(p[0]), 20, P(p[1]), 30, P(z)));
+  const poly = (layer, pts, closed, z, is3d) => {
+    add(0, 'POLYLINE', 8, layer, 66, 1, 10, 0, 20, 0, 30, is3d ? 0 : P(z), 70, (closed ? 1 : 0) | (is3d ? 8 : 0));
+    pts.forEach(p => add(0, 'VERTEX', 8, layer, 10, P(p[0]), 20, P(p[1]), 30, P(is3d ? p[2] : z), 70, is3d ? 32 : 0));
     add(0, 'SEQEND', 8, layer);
+    cnt[layer] = (cnt[layer] || 0) + 1;
   };
-  let nSpot = 0, nGrid = 0, nCont = 0;
-  if ($('#exSpots').checked) for (let id = 0; id < M.set.length; id++) {
+  if (expOn('exSpots')) for (let id = 0; id < M.set.length; id++) {
     if (!M.set[id] || !vInSite(id) || (id < G.N && !editable(id))) continue;
-    const [x, y] = vWorld(id); spot('G-PROP-SPOT', x, y, M.z[id]); nSpot++;
+    const [x, y] = vWorld(id); spot('G-PROP-SPOT', x, y, M.z[id]);
   }
-  if ($('#exGrid').checked) for (let n = 0; n < G.N; n++) {
+  if (expOn('exGrid')) for (let n = 0; n < G.N; n++) {
     if (!G.nodeActive[n] || M.set[n] || !G.nodeIn[n]) continue;
-    const [x, y] = nodeWorld(n); spot('G-PROP-GRID', x, y, M.z[n]); nGrid++;
+    const [x, y] = nodeWorld(n); spot('G-PROP-GRID', x, y, M.z[n]);
   }
-  if ($('#exCont').checked) {
-    const segs = hb ? M.contours.filter(c => inGradeArea((c.a[0] + c.b[0]) / 2, (c.a[1] + c.b[1]) / 2)) : M.contours;
-    for (const c of chainSegs(segs)) { poly(c.major ? 'G-PROP-CONT-MAJR' : 'G-PROP-CONT-MINR', c.pts, c.closed, c.z); nCont++; }
+  if (expOn('exCMin') || expOn('exCMaj')) {
+    let segs = M.contours;
+    if (hb) {
+      segs = [];
+      for (const c of M.contours) for (const [t0, t1] of clipIntervals(c.a, c.b, S.boundary)) {
+        const P0 = [c.a[0] + (c.b[0] - c.a[0]) * t0, c.a[1] + (c.b[1] - c.a[1]) * t0, c.a[2]], P1 = [c.a[0] + (c.b[0] - c.a[0]) * t1, c.a[1] + (c.b[1] - c.a[1]) * t1, c.a[2]];
+        segs.push({ a: P0, b: P1, major: c.major });
+      }
+    }
+    for (const c of chainSegs(segs)) if (expOn(c.major ? 'exCMaj' : 'exCMin')) poly(c.major ? 'G-PROP-CONT-MAJR' : 'G-PROP-CONT-MINR', c.pts, c.closed, c.z);
   }
-  if ($('#exLim').checked && hb) poly('G-GRAD-LIMT', S.boundary, true, 0);
+  if (expOn('exSlope')) {
+    const s = G.s, lay = 'G-PROP-SLOP', h2 = th * 0.8;
+    G.cells.forEach((cell, ci) => {
+      if ((G.hasEx ? gaSum(cell) : cell.area) < s * s * 0.3) return;
+      const cd = M.cellData[ci], mag = Math.hypot(cd.su, cd.sv); if (mag < 0.0005) return;
+      const cu = (cell.i + 0.5) * s, cv = (cell.j + 0.5) * s, [cx, cy] = toWorld(cu, cv);
+      if (hb && !pip(cx, cy, S.boundary)) return;
+      const [dx, dy] = gradWorld(-cd.su / mag, -cd.sv / mag), len = s * 0.55, hs = Math.min(len * 0.25, th * fxy * 1.2), z = zAtWorld(cx, cy);
+      const tx = cx - dx * len / 2, ty = cy - dy * len / 2, hx = cx + dx * len / 2, hy = cy + dy * len / 2;
+      line(lay, tx, ty, z, hx, hy, z);
+      line(lay, hx, hy, z, hx - dx * hs - dy * hs * 0.5, hy - dy * hs + dx * hs * 0.5, z);
+      line(lay, hx, hy, z, hx - dx * hs + dy * hs * 0.5, hy - dy * hs - dx * hs * 0.5, z);
+      let ang = Math.atan2(dy, dx) * 180 / Math.PI; if (ang > 90 || ang < -90) ang += 180;
+      const ar = ang * Math.PI / 180, txt = (mag * 100).toFixed(1) + '%';
+      const tw = txt.length * h2 * 0.75 * fxy, ox = -Math.sin(ar) * h2 * 0.5 * fxy, oy = Math.cos(ar) * h2 * 0.5 * fxy;
+      text(lay, cx - Math.cos(ar) * tw / 2 + ox, cy - Math.sin(ar) * tw / 2 + oy, z, h2, txt, (ang + 360) % 360);
+      cnt[lay] = (cnt[lay] || 0) + 1;
+    });
+  }
+  if (expOn('exFeat') && UL && hb) {
+    const step = G.s / 4;
+    for (const l of UL.lines) {
+      let run = [];
+      const flush = () => { if (run.length >= 2) poly('G-PROP-FEAT', run, false, 0, true); run = []; };
+      for (let k = 0; k + 2 < l.length; k += 2) {
+        const ax = l[k], ay = l[k + 1], bx = l[k + 2], by = l[k + 3], n = Math.max(1, Math.ceil(Math.hypot(bx - ax, by - ay) / step));
+        for (let m = k ? 1 : 0; m <= n; m++) {
+          const x = ax + (bx - ax) * m / n, y = ay + (by - ay) * m / n, inside = inGradeArea(x, y) && pip(x, y, G.dom);
+          if (!inside) { flush(); continue; }
+          const z = zAtWorld(x, y), last = run[run.length - 1];
+          // keep original corners and any point where the grade bends; drop collinear interior samples
+          if (run.length >= 2 && m !== n) {
+            const p0 = run[run.length - 2], d1 = Math.hypot(last[0] - p0[0], last[1] - p0[1]), d2 = Math.hypot(x - last[0], y - last[1]);
+            const g1 = d1 > 1e-9 ? (last[2] - p0[2]) / d1 : 0, g2 = d2 > 1e-9 ? (z - last[2]) / d2 : 0;
+            if (Math.abs(g1 - g2) < 1e-4 && !last.corner) { run[run.length - 1] = [x, y, z]; continue; }
+          }
+          const pt = [x, y, z]; if (m === n) pt.corner = true; run.push(pt);
+        }
+      }
+      flush();
+    }
+  }
+  if (expOn('exLim') && hb) poly('G-GRAD-LIMT', S.boundary, true, 0);
   add(0, 'ENDSEC', 0, 'EOF');
-  return { text: L.join('\r\n') + '\r\n', nSpot, nGrid, nCont };
+  return { text: L.join('\r\n') + '\r\n', cnt, nSpot: cnt['G-PROP-SPOT'] || 0, nGrid: cnt['G-PROP-GRID'] || 0, nCont: (cnt['G-PROP-CONT-MINR'] || 0) + (cnt['G-PROP-CONT-MAJR'] || 0) };
 }
 const CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
 function zipOne(name, bytes) {
@@ -2930,20 +3094,160 @@ function expMsg(t) { $('#expMsg').textContent = t; }
 function showDxfText(r) {
   $('#expText').value = r.text; $('#expText').hidden = false; $('#expCopyRow').hidden = false;
 }
-$('#expBtn').addEventListener('click', () => {
+/* ---------------- AutoCAD preview ---------------- */
+const ACI = { 1: '#ff0000', 2: '#ffff00', 3: '#00ff00', 4: '#00ffff', 5: '#0000ff', 6: '#ff00ff', 8: '#808080', 9: '#c0c0c0', 30: '#ff7f00', 32: '#cc6600', 33: '#cc9966' };
+const aciColor = (c, dark) => c === 7 ? (dark ? '#ffffff' : '#000000') : (c === 5 && dark ? '#3f6bff' : c === 2 && !dark ? '#c9b400' : (ACI[c] || '#ffffff'));
+const UNIT_NAMES = { 1: 'metres', 0.001: 'millimetres', 0.01: 'centimetres', 0.3048: 'feet', 0.0254: 'inches' };
+const PV = { open: false, k: 10, ox: 0, oy: 0, bg: 'dark', data: null, drag: null, fitted: false };
+const pvC = $('#pvCanvas'), pvx = pvC.getContext('2d');
+function pvParse(text) {
+  const raw = parseDXF(text), out = { pts: [], segs: [], texts: [], polys: [], ext: [Infinity, Infinity, -Infinity, -Infinity] };
+  const grow = (x, y) => { const e = out.ext; if (x < e[0]) e[0] = x; if (y < e[1]) e[1] = y; if (x > e[2]) e[2] = x; if (y > e[3]) e[3] = y; };
+  let pl = null;
+  for (const e of raw.ents) {
+    const g = e.g, f = (c, d) => { for (let k = 0; k < g.length; k += 2) if (g[k] === c) { const v = parseFloat(g[k + 1]); return isFinite(v) ? v : d; } return d; };
+    const sv = (c) => { for (let k = 0; k < g.length; k += 2) if (g[k] === c) return g[k + 1]; return ''; };
+    const layer = sv(8).trim();
+    if (e.type === 'POINT') { out.pts.push({ layer, x: f(10, 0), y: f(20, 0) }); grow(f(10, 0), f(20, 0)); }
+    else if (e.type === 'LINE') { out.segs.push({ layer, a: [f(10, 0), f(20, 0)], b: [f(11, 0), f(21, 0)] }); grow(f(10, 0), f(20, 0)); }
+    else if (e.type === 'TEXT') out.texts.push({ layer, x: f(10, 0), y: f(20, 0), h: f(40, 1), str: sv(1), rot: f(50, 0) });
+    else if (e.type === 'POLYLINE') pl = { layer, closed: (f(70, 0) & 1) === 1, pts: [] };
+    else if (e.type === 'VERTEX' && pl) { pl.pts.push([f(10, 0), f(20, 0)]); grow(f(10, 0), f(20, 0)); }
+    else if (e.type === 'SEQEND' && pl) { out.polys.push(pl); pl = null; }
+  }
+  return out;
+}
+function pvRefresh() {
+  const r = buildDxf();
+  PV.r = r; PV.data = r ? pvParse(r.text) : null;
+  const dark = PV.bg === 'dark';
+  $('#pvLayers').innerHTML = EXP_LAYERS.map(([nm, c, id, ds]) => {
+    const n = r && r.cnt[nm] || 0, on = expOn(id), dis = (id === 'exFeat' && !UL) || (id === 'exLim' && S.boundary.length < 3);
+    return `<label class="${!n && on ? 'none' : ''}" title="AutoCAD colour ${c}"><input type="checkbox" id="${id}" ${on ? 'checked' : ''} ${dis ? 'disabled' : ''}><span class="aci" style="background:${aciColor(c, dark)}"></span><span><span class="nm">${nm}</span><span class="ds">${ds}${dis ? (id === 'exFeat' ? ' · add a proposed plan first' : ' · draw a grading area first') : ''}</span></span><em>${on ? n : 'off'}</em></label>`;
+  }).join('');
+  const u = S.units.xy || 1;
+  $('#pvUnits').textContent = `Written in ${UNIT_NAMES[u] || 'drawing units'}, in your drawing's own coordinates, as AutoCAD R12 DXF. Insert or xref it at 0,0,0 and it lines up.`;
+  pvDraw();
+}
+function pvFit() {
+  const r = pvC.getBoundingClientRect(); if (r.width < 10) return;
+  const fxy = S.units.xy || 1;
+  let e = PV.data && isFinite(PV.data.ext[0]) ? PV.data.ext.slice() : null;
+  if (S.boundary.length >= 3) { const [a, b, c, d] = bbox(S.boundary).map(v => v / fxy); e = e ? [Math.min(e[0], a), Math.min(e[1], b), Math.max(e[2], c), Math.max(e[3], d)] : [a, b, c, d]; }
+  if (!e && EXI) e = bbox(EXI.hull).map(v => v / fxy);
+  if (!e) e = [0, 0, 30, 20];
+  const w = Math.max(e[2] - e[0], 1e-6), h = Math.max(e[3] - e[1], 1e-6), pad = 40;
+  PV.k = Math.min((r.width - 2 * pad) / w, (r.height - 2 * pad - 26) / h);
+  PV.ox = r.width / 2 - (e[0] + e[2]) / 2 * PV.k; PV.oy = (r.height - 26) / 2 + (e[1] + e[3]) / 2 * PV.k;
+  pvDraw();
+}
+function pvDraw() {
+  if (!PV.open) return;
+  const r = pvC.getBoundingClientRect(), dp = Math.min(window.devicePixelRatio || 1, 2), W2 = r.width, H2 = r.height;
+  if (pvC.width !== Math.round(W2 * dp) || pvC.height !== Math.round(H2 * dp)) { pvC.width = Math.max(1, Math.round(W2 * dp)); pvC.height = Math.max(1, Math.round(H2 * dp)); }
+  const c = pvx, dark = PV.bg === 'dark', k = PV.k, ox = PV.ox, oy = PV.oy, fxy = S.units.xy || 1;
+  const X = (x) => ox + x * k, Yy = (y) => oy - y * k;
+  c.setTransform(dp, 0, 0, dp, 0, 0);
+  c.fillStyle = dark ? '#212830' : '#ffffff'; c.fillRect(0, 0, W2, H2);
+  // faint model-space grid
+  c.strokeStyle = dark ? 'rgba(255,255,255,0.045)' : 'rgba(0,0,0,0.05)'; c.lineWidth = 1; c.beginPath();
+  let st = 1; while (st * k < 40) st *= 10; while (st * k > 400) st /= 10;
+  for (let x = Math.ceil(-ox / k / st) * st; X(x) < W2; x += st) { c.moveTo(Math.round(X(x)) + 0.5, 0); c.lineTo(Math.round(X(x)) + 0.5, H2); }
+  for (let y = Math.floor(oy / k / st) * st; Yy(y) < H2; y -= st) { c.moveTo(0, Math.round(Yy(y)) + 0.5); c.lineTo(W2, Math.round(Yy(y)) + 0.5); }
+  c.stroke();
+  // context: the user's drawing, faded like an xref
+  if ($('#pvCtx').checked) {
+    const ctxCol = dark ? 'rgba(200,210,220,0.28)' : 'rgba(40,50,60,0.3)';
+    c.strokeStyle = ctxCol; c.lineWidth = 1; c.beginPath();
+    const lineSet = (lines) => { for (const l of lines) { c.moveTo(X(l[0] / fxy), Yy(l[1] / fxy)); for (let i = 2; i < l.length; i += 2) c.lineTo(X(l[i] / fxy), Yy(l[i + 1] / fxy)); } };
+    if (BG) lineSet(BG.lines);
+    if (UL) lineSet(UL.lines);
+    c.stroke();
+    if (EXI && EX) {
+      c.fillStyle = ctxCol; c.strokeStyle = ctxCol; c.beginPath();
+      const h = Math.max(0.01, num($('#exTxt').value, 0.25)) / fxy * 0.85, hp = h * k;
+      for (const p of EX.pts) { const x = X(p[0] / fxy), y = Yy(p[1] / fxy); if (x < -50 || x > W2 + 50 || y < -50 || y > H2 + 50) continue; c.moveTo(x - 2, y); c.lineTo(x + 2, y); c.moveTo(x, y - 2); c.lineTo(x, y + 2); }
+      c.stroke();
+      if (hp >= 4 && EX.pts.length < 6000) { c.font = `${hp}px Arial, Helvetica, sans-serif`; c.textAlign = 'left'; c.textBaseline = 'alphabetic'; for (const p of EX.pts) { const x = X(p[0] / fxy), y = Yy(p[1] / fxy); if (x < -80 || x > W2 + 20 || y < -20 || y > H2 + 40) continue; c.fillText(p[3], x + hp * 0.5, y - hp * 0.3); } }
+    }
+  }
+  const D = PV.data;
+  if (D) {
+    const lc = {}; EXP_LAYERS.forEach(([n, ci]) => { lc[n] = aciColor(ci, dark); });
+    c.lineWidth = 1; c.lineJoin = 'round';
+    for (const p of D.polys) { c.strokeStyle = lc[p.layer] || '#fff'; c.lineWidth = p.layer === 'G-GRAD-LIMT' ? 1.6 : p.layer === 'G-PROP-CONT-MAJR' ? 1.3 : 1; c.beginPath(); p.pts.forEach((q, i) => i ? c.lineTo(X(q[0]), Yy(q[1])) : c.moveTo(X(q[0]), Yy(q[1]))); if (p.closed) c.closePath(); c.stroke(); }
+    c.lineWidth = 1;
+    for (const sg of D.segs) { c.strokeStyle = lc[sg.layer] || '#fff'; c.beginPath(); c.moveTo(X(sg.a[0]), Yy(sg.a[1])); c.lineTo(X(sg.b[0]), Yy(sg.b[1])); c.stroke(); }
+    for (const p of D.pts) { c.fillStyle = lc[p.layer] || '#fff'; c.fillRect(X(p.x) - 1, Yy(p.y) - 1, 2, 2); }
+    for (const t of D.texts) {
+      const hp = t.h * k, x = X(t.x), y = Yy(t.y);
+      if (x < -400 || x > W2 + 50 || y < -50 || y > H2 + 400) continue;
+      c.fillStyle = lc[t.layer] || '#fff';
+      if (hp < 2.5) { c.fillRect(x, y - Math.max(1, hp * 0.6), Math.max(2, t.str.length * hp * 0.6), Math.max(1, hp * 0.6)); continue; }
+      c.save(); c.translate(x, y); if (t.rot) c.rotate(-t.rot * Math.PI / 180);
+      c.font = `${hp}px Arial, Helvetica, sans-serif`; c.textAlign = 'left'; c.textBaseline = 'alphabetic'; c.fillText(t.str, 0, 0);
+      c.restore();
+    }
+  }
+  // UCS icon
+  const ux = 22, uy = H2 - 50, ucs = dark ? '#d8dde3' : '#333';
+  c.strokeStyle = ucs; c.fillStyle = ucs; c.lineWidth = 1.5; c.beginPath(); c.moveTo(ux, uy); c.lineTo(ux + 34, uy); c.moveTo(ux, uy); c.lineTo(ux, uy - 34); c.stroke();
+  c.beginPath(); c.moveTo(ux + 34, uy - 4); c.lineTo(ux + 42, uy); c.lineTo(ux + 34, uy + 4); c.fill(); c.beginPath(); c.moveTo(ux - 4, uy - 34); c.lineTo(ux, uy - 42); c.lineTo(ux + 4, uy - 34); c.fill();
+  c.font = `700 11px ${UIF}`; c.textAlign = 'left'; c.textBaseline = 'middle'; c.fillText('X', ux + 46, uy); c.fillText('Y', ux - 4, uy - 50);
+  if (!D || (!D.polys.length && !D.segs.length && !D.pts.length)) {
+    c.font = `500 13px ${UIF}`; c.textAlign = 'center'; c.fillStyle = dark ? '#d8dde3' : '#333';
+    c.fillText(!G || !M ? 'Nothing to export yet. Draw a grading area first.' : 'Every export layer is off, or there’s nothing on them yet.', W2 / 2, H2 / 2 - 13);
+  }
+}
+function openPreview() {
+  if (G && !G.tooMany && M === null) flush();
+  PV.open = true; $('#pv').hidden = false;
   $('#expMsg').textContent = ''; $('#expText').hidden = true; $('#expCopyRow').hidden = true;
-  $('#expModal').hidden = false; $('#expClose').focus();
-  downloadsNs();
+  syncPvBg(); pvRefresh(); requestAnimationFrame(() => { pvFit(); });
+  $('#pvClose').focus(); downloadsNs();
+}
+function closePreview() { PV.open = false; $('#pv').hidden = true; $('#expBtn').focus(); }
+function syncPvBg() { document.querySelectorAll('#pvBgSeg button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.bg === PV.bg))); $('#pvView').style.background = PV.bg === 'dark' ? '#212830' : '#ffffff'; }
+$('#expBtn').addEventListener('click', openPreview);
+$('#pvClose').addEventListener('click', closePreview);
+$('#pvFit').addEventListener('click', pvFit);
+document.querySelectorAll('#pvBgSeg button').forEach(b => b.addEventListener('click', () => { PV.bg = b.dataset.bg; V.pvBg = PV.bg; persist(); syncPvBg(); pvRefresh(); }));
+$('#pvLayers').addEventListener('change', (e) => { if (e.target.id) { V.exp = V.exp || {}; V.exp[e.target.id] = e.target.checked; persist(); pvRefresh(); } });
+['#exTxt', '#exPrefix'].forEach(id => $(id).addEventListener('input', () => { V.exp = V.exp || {}; V.exp[id.slice(1)] = $(id).value; persist(); pvRefresh(); }));
+$('#pvCtx').addEventListener('change', () => { V.exp = V.exp || {}; V.exp.pvCtx = $('#pvCtx').checked; persist(); pvDraw(); });
+pvC.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  const r = pvC.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top, wx = (mx - PV.ox) / PV.k, wy = (PV.oy - my) / PV.k;
+  PV.k = Math.max(1e-6, PV.k * Math.exp(-e.deltaY * 0.0015)); PV.ox = mx - wx * PV.k; PV.oy = my + wy * PV.k; pvDraw();
+}, { passive: false });
+pvC.addEventListener('pointerdown', (e) => { pvC.setPointerCapture(e.pointerId); PV.drag = { x: e.clientX, y: e.clientY, ox: PV.ox, oy: PV.oy }; if (e.button === 1) e.preventDefault(); });
+pvC.addEventListener('mousedown', (e) => { if (e.button === 1) e.preventDefault(); });
+pvC.addEventListener('pointermove', (e) => {
+  const r = pvC.getBoundingClientRect(), x = (e.clientX - r.left - PV.ox) / PV.k, y = (PV.oy - (e.clientY - r.top)) / PV.k;
+  $('#pvCoords').textContent = `${x.toFixed(3)}, ${y.toFixed(3)}`;
+  if (PV.drag) { PV.ox = PV.drag.ox + e.clientX - PV.drag.x; PV.oy = PV.drag.oy + e.clientY - PV.drag.y; pvDraw(); }
 });
-$('#expClose').addEventListener('click', () => { $('#expModal').hidden = true; });
-$('#expModal').addEventListener('click', (e) => { if (e.target.id === 'expModal') $('#expModal').hidden = true; });
+pvC.addEventListener('pointerup', () => { PV.drag = null; });
+pvC.addEventListener('pointercancel', () => { PV.drag = null; });
+pvC.addEventListener('dblclick', pvFit);
+pvC.addEventListener('contextmenu', (e) => e.preventDefault());
+if (window.ResizeObserver) new ResizeObserver(() => { if (PV.open) pvDraw(); }).observe($('#pvView'));
+function applyExpPrefs() {
+  const e = V.exp || {};
+  if (typeof e.exTxt === 'string') $('#exTxt').value = e.exTxt;
+  if (typeof e.exPrefix === 'string') $('#exPrefix').value = e.exPrefix;
+  if (typeof e.pvCtx === 'boolean') $('#pvCtx').checked = e.pvCtx;
+  EXP_LAYERS.forEach(([, , id]) => { if (typeof e[id] === 'boolean') EXP_DEFAULT[id] = e[id]; });
+  if (V.pvBg === 'light' || V.pvBg === 'dark') PV.bg = V.pvBg;
+}
 $('#expShow').addEventListener('click', () => { const r = buildDxf(); if (!r) { expMsg('Set up a grading area first.'); return; } showDxfText(r); expMsg(''); });
 $('#expCopy').addEventListener('click', () => copyFrom($('#expText'), $('#expMsg')));
 $('#expSave').addEventListener('click', async () => {
   const r = buildDxf();
   if (!r) { expMsg('Set up a grading area first.'); return; }
   const base = (S.name || 'grading').replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '-').slice(0, 60) || 'grading';
-  const summary = `${r.nSpot} spots, ${r.nGrid} grid points, ${r.nCont} contour lines`;
+  const tot = Object.values(r.cnt).reduce((a, b) => a + b, 0);
+  const summary = `${tot} items on ${Object.keys(r.cnt).length} layers`;
   const dl = await downloadsNs();
   if (!dl && !(window.claude && window.claude.use)) {
     saveBlob(new Blob([r.text], { type: 'application/dxf' }), base + '-grading.dxf');
@@ -2968,7 +3272,8 @@ document.addEventListener('keydown', (e) => {
   const typing = tag === 'input' || tag === 'textarea' || tag === 'select';
   if (e.key === 'Escape' && !$('#dataModal').hidden) { $('#dataModal').hidden = true; return; }
   if (e.key === 'Escape' && !$('#impModal').hidden) { $('#impModal').hidden = true; return; }
-  if (e.key === 'Escape' && !$('#expModal').hidden) { $('#expModal').hidden = true; return; }
+  if (e.key === 'Escape' && PV.open) { closePreview(); return; }
+  if (PV.open) return;
   if (typing) { if (e.key === 'Escape') e.target.blur(); return; }
   const mod = e.ctrlKey || e.metaKey, key = e.key.toLowerCase();
   if (mod && key === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
@@ -3086,7 +3391,7 @@ function drawOverlay3D() {
     return true;
   };
   const sel = UI.sel && UI.sel.kind === 'nodes' ? UI.sel.list : [];
-  const pinTop = (id) => Y(M.z[id]) + (M.set[id] && editable(id) ? R.pinR * 5 : R.pinR);
+  const pinTop = (id) => Y(vZ(id)) + (vSet(id) && editable(id) ? R.pinR * 5 : R.pinR);
   // letters on selected points come first so nothing covers them
   const badges = [];
   if (sel.length >= 2) sel.forEach((id, k) => { const [x, y] = vWorld(id), p = proj(x, y, pinTop(id)); if (p) { badges.push([p, ptLetter(k)]); claim(p[0] - 12, p[1] - 12, 22, 20); } });
@@ -3323,7 +3628,7 @@ function build3D() {
   const pr = Math.min(0.5, Math.max(0.05, Math.min(span * 0.006, G.s * 0.09)));
   R.pinR = pr;
   const setPos = [], intPos = [], stick = [], xPos = [], xStick = [];
-  for (let k = 0; k < G.N; k++) {
+  for (let k = 0; k < G.N && V.show.gridPts; k++) {
     if (!G.nodeActive[k]) continue;
     if (!(M.set[k] || G.nodeIn[k])) continue;
     if (hasEx && !G.nodeIn[k]) continue;
@@ -3347,7 +3652,6 @@ function build3D() {
     const mE = instanced(new THREE.SphereGeometry(pr * 0.6, 8, 6), new THREE.MeshLambertMaterial({ color: col3(C['ex-ink']) }), ep); if (mE) R.group.add(mE);
   }
   // proposed underlay draped on the proposed surface
-  R.ulPts = [];
   if (UL && V.show.ul) {
     const strong = [], faint = [], step = Math.max(0.05, G.s / 5), hb = S.boundary.length >= 3, ulift = lift * 3.5;
     let budget = 400000;
@@ -3365,16 +3669,11 @@ function build3D() {
           px = qx; py = qy; pz = qz;
         }
       }
-      if (hb) for (let k = 0; k < l.length && R.ulPts.length < 20000; k += 2) {
-        const x = l[k], y = l[k + 1];
-        if (k > 0 && k === l.length - 2 && Math.abs(x - l[0]) < 1e-9 && Math.abs(y - l[1]) < 1e-9) continue;
-        if (inGradeArea(x, y) && pip(x, y, dom) && vertexAt(x, y) < 0) R.ulPts.push([x, y]);
-      }
     }
     if (strong.length) R.group.add(lineSegs(strong, col3(C.ul), 1));
     if (faint.length) R.group.add(lineSegs(faint, col3(C.ul), 0.35));
-    if (R.ulPts.length) {
-      const pp = []; R.ulPts.forEach(([x, y]) => pp.push(x - cx, Y(zAtWorld(x, y)) + ulift, -(y - cy)));
+    if (G.P.length) {
+      const pp = []; G.P.forEach((p, k) => pp.push(p.x - cx, Y(M.pz[k]) + ulift, -(p.y - cy)));
       R.group.add(new THREE.Points(new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(pp, 3)), new THREE.PointsMaterial({ color: col3(C.ul), size: 5, sizeAttenuation: false })));
     }
   }
@@ -3382,9 +3681,9 @@ function build3D() {
   buildSel3D();
 }
 // scene position of a target: {id} is a grid or off-grid vertex, {pt} is an unset underlay corner
-function tZ(t) { return t.pt ? zAtWorld(t.pt[0], t.pt[1]) : M.z[t.id]; }
+function tZ(t) { return t.pt ? zAtWorld(t.pt[0], t.pt[1]) : vZ(t.id); }
 function tXY(t) { return t.pt ? t.pt : vWorld(t.id); }
-function tSet(t) { return !t.pt && M.set[t.id]; }
+function tSet(t) { return !t.pt && vSet(t.id); }
 function tEditable(t) { return t.pt ? true : editable(t.id); }
 function tScene(t, topPin) {
   const { cx, cy, skirt, ex, zmin } = R.map, [wx, wy] = tXY(t);
@@ -3464,7 +3763,7 @@ function pick3D(clientX, clientY) {
     const d = Math.hypot((v.x + 1) / 2 * rect.width - mx, (1 - v.y) / 2 * rect.height - my) + pen;
     if (d < bd) { bd = d; best = t; }
   };
-  for (let n = 0; n < G.N; n++) {
+  for (let n = 0; n < G.N && V.show.gridPts; n++) {
     if (!G.nodeActive[n]) continue;
     const ed = editable(n);
     if (!G.hasEx && !G.nodeIn[n] && !M.set[n]) continue;
@@ -3473,7 +3772,7 @@ function pick3D(clientX, clientY) {
     if (M.set[n] && ed) test(t, true, 0);
   }
   G.X.forEach((e, k) => { if (!G.xActive[k]) return; const t = { id: G.N + k }; test(t, false, -1); test(t, true, -1); });
-  if (R.ulPts) for (const p of R.ulPts) test({ pt: p }, false, 1);
+  if (UL && V.show.ul) G.P.forEach((p, k) => test({ id: G.NT + k }, false, 1));
   return best;
 }
 function pxPerMetre(t) {
@@ -3494,14 +3793,39 @@ function tEz(t) { return t.pt ? exAt(t.pt[0], t.pt[1]) : vEz(t.id); }
 function nodeTagHtml(t) {
   const z = tZ(t), lt = t.pt ? '' : selLetter(t.id), pre = lt ? `<span class="pl">Point ${lt}</span> ` : '';
   if (!tEditable(t)) return `${pre}<b>${f2(z)}</b> <span class="d">existing · locked</span>`;
-  let s = `${pre}<b>${f2(z)}</b> <span class="d">${t.pt ? 'underlay corner · drag to set' : t.id >= G.N ? 'underlay point' : M.set[t.id] ? 'set' : 'interpolated'}</span>`;
+  let s = `${pre}<b>${f2(z)}</b> <span class="d">${t.pt || isP(t.id) ? 'underlay corner · not set' : t.id >= G.N ? 'underlay point' : M.set[t.id] ? 'set' : 'interpolated'}</span>`;
   if (G.hasEx) s += ` <span class="d">· ${changeLine(z - tEz(t))}</span>`;
   return s;
 }
-const D3 = { drag: null, hoverRaf: 0, lastEv: null };
+const D3 = { drag: null, box: null, hoverRaf: 0, lastEv: null };
+const box3 = $('#box3d');
+function selectInBox3D(b) {
+  if (!R.map || !G || G.tooMany || !M) return;
+  const rect = R.renderer.domElement.getBoundingClientRect(), v = v3();
+  const x0 = Math.min(b.x0, b.x1) - rect.left, x1 = Math.max(b.x0, b.x1) - rect.left, y0 = Math.min(b.y0, b.y1) - rect.top, y1 = Math.max(b.y0, b.y1) - rect.top;
+  const list = UI.sel && UI.sel.kind === 'nodes' ? UI.sel.list.slice() : [], have = new Set(list);
+  const test = (id) => {
+    if (have.has(id)) return;
+    v.set(...tScene({ id }, false)).project(R.camera); if (v.z > 1 || v.z < -1) return;
+    const sx = (v.x + 1) / 2 * rect.width, sy = (1 - v.y) / 2 * rect.height;
+    if (sx >= x0 && sx <= x1 && sy >= y0 && sy <= y1) { list.push(id); have.add(id); }
+  };
+  if (V.show.gridPts) for (let n = 0; n < G.N; n++) if (G.nodeActive[n] && editable(n) && (G.hasEx || G.nodeIn[n])) test(n);
+  G.X.forEach((e, k) => { if (G.xActive[k]) test(G.N + k); });
+  if (UL && V.show.ul) G.P.forEach((p, k) => test(G.NT + k));
+  UI.sel = list.length ? { kind: 'nodes', list } : UI.sel;
+  invalidate('sel');
+}
 host3.addEventListener('pointerdown', (e) => {
   if (!R.ok || e.button !== 0 || !M) return;
-  const hit = pick3D(e.clientX, e.clientY);
+  const hit = pick3D(e.clientX, e.clientY), addKey = e.shiftKey || e.ctrlKey || e.metaKey;
+  if (!hit && addKey && G && !G.tooMany) {
+    e.stopPropagation(); e.preventDefault();
+    if (R.controls) R.controls.enabled = false;
+    try { host3.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+    D3.box = { x0: e.clientX, y0: e.clientY, x1: e.clientX, y1: e.clientY };
+    hideTag(); return;
+  }
   if (!hit) return;
   e.stopPropagation(); e.preventDefault();
   if (R.controls) R.controls.enabled = false;
@@ -3510,18 +3834,25 @@ host3.addEventListener('pointerdown', (e) => {
   if (hit.pt) { UI.sel = { kind: 'pt', x: hit.pt[0], y: hit.pt[1] }; group = [hit]; }
   else {
     const n = hit.id;
-    if (e.shiftKey) {
+    if (addKey) {
       if (UI.sel && UI.sel.kind === 'nodes') { const k = UI.sel.list.indexOf(n); if (k >= 0) UI.sel.list.splice(k, 1); else if (editable(n)) UI.sel.list.push(n); if (!UI.sel.list.length) UI.sel = null; }
       else UI.sel = { kind: 'nodes', list: [n] };
     } else if (!(UI.sel && UI.sel.kind === 'nodes' && UI.sel.list.includes(n))) UI.sel = { kind: 'nodes', list: [n] };
     group = editable(n) && UI.sel ? UI.sel.list.filter(editable).map(id => ({ id })) : [];
   }
-  D3.drag = { t: hit, y0: e.clientY, moved: false, shift: e.shiftKey, group, base: group.map(tZ), refs: null, ppm: pxPerMetre(hit), dz: 0, ptype: e.pointerType, ez: G.hasEx ? tEz(hit) : 0 };
+  D3.drag = { t: hit, letter: selLetter(hit.id), y0: e.clientY, moved: false, shift: addKey, group, base: group.map(tZ), refs: null, ppm: pxPerMetre(hit), dz: 0, ptype: e.pointerType, ez: G.hasEx ? tEz(hit) : 0 };
   R.hover = null;
   showTag(e.clientX, e.clientY, nodeTagHtml(hit));
   invalidate('sel');
 }, true);
 host3.addEventListener('pointermove', (e) => {
+  if (D3.box) {
+    const b = D3.box, r = host3.getBoundingClientRect(); b.x1 = e.clientX; b.y1 = e.clientY;
+    box3.hidden = false;
+    box3.style.left = (Math.min(b.x0, b.x1) - r.left) + 'px'; box3.style.top = (Math.min(b.y0, b.y1) - r.top) + 'px';
+    box3.style.width = Math.abs(b.x1 - b.x0) + 'px'; box3.style.height = Math.abs(b.y1 - b.y0) + 'px';
+    return;
+  }
   const d = D3.drag;
   if (d) {
     const dy = e.clientY - d.y0;
@@ -3543,7 +3874,7 @@ host3.addEventListener('pointermove', (e) => {
         invalidate('drag');
       }
       const z = d.base[0] + dz, ti = d.group.findIndex(t => tKey(t) === tKey(d.t)), zz = ti >= 0 ? d.base[ti] + dz : z;
-      const lt = d.t.pt ? '' : selLetter(d.t.id);
+      const lt = d.letter;
       let html = `${lt ? `<span class="pl">Point ${lt}</span> ` : ''}<b>${f2(zz)}</b> <span class="d">${dz >= 0 ? '▲' : '▼'} ${sgn2(dz)}</span>`;
       if (G.hasEx) html += ` <span class="d">· ${changeLine(zz - d.ez)}</span>`;
       if (d.group.length > 1) html += ` <span class="d">· ${d.group.length} points</span>`;
@@ -3563,6 +3894,12 @@ host3.addEventListener('pointermove', (e) => {
   });
 });
 function endDrag3(e) {
+  if (D3.box) {
+    const b = D3.box; D3.box = null; box3.hidden = true;
+    if (R.controls) R.controls.enabled = true;
+    if (Math.abs(b.x1 - b.x0) > 4 || Math.abs(b.y1 - b.y0) > 4) selectInBox3D(b);
+    return;
+  }
   const d = D3.drag; if (!d) return;
   D3.drag = null;
   if (R.controls) R.controls.enabled = true;
@@ -3581,6 +3918,7 @@ try { window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change
 new MutationObserver(onTheme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'class'] });
 refreshColors();
 buildExisting(); buildBgPath(); buildUl();
+applyExpPrefs();
 syncControls(); syncUndo();
 init3D();
 if (window.ResizeObserver) {
