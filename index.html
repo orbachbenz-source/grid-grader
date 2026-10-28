@@ -76,8 +76,7 @@ button.warn{border-color:var(--accent);color:var(--accent)}
 .seg button[aria-pressed="true"]{background:var(--ink);color:var(--panel)}
 
 .main{display:grid;grid-template-columns:316px minmax(0,1fr) minmax(0,1fr);gap:10px;min-height:0}
-.main[data-layout="plan"]{grid-template-columns:316px minmax(0,1fr) 0}
-.main[data-layout="3d"]{grid-template-columns:316px 0 minmax(0,1fr)}
+.main[data-layout="plan"],.main[data-layout="3d"]{grid-template-columns:316px minmax(0,1fr)}
 .main[data-layout="plan"] #view3d,.main[data-layout="3d"] #planView{display:none}
 .side{grid-row:1/-1;background:var(--panel);border:1px solid var(--line);border-radius:6px;overflow:auto;min-height:0;display:flex;flex-direction:column}
 .view{position:relative;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:var(--view);min-height:0;min-width:0}
@@ -92,6 +91,22 @@ button.warn{border-color:var(--accent);color:var(--accent)}
 .vstatus{position:absolute;left:0;right:0;bottom:0;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:6px 10px;font-size:11.5px;color:var(--muted);background:var(--veil);border-top:1px solid var(--line);pointer-events:none}
 .vstatus .mono{color:var(--ink)}
 .fallback{position:absolute;inset:0;display:grid;place-items:center;padding:24px;text-align:center;color:var(--muted)}
+[hidden]{display:none!important}
+.ov3d{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:2}
+.layers{display:flex;flex-direction:column;gap:4px}
+.lg{display:flex;flex-direction:column;gap:6px}
+.lg+.lg{border-top:1px solid var(--line);padding-top:10px;margin-top:6px}
+.lg .eyebrow{margin-bottom:1px}
+.lrow{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px;align-items:center;font-size:12.5px;cursor:pointer;padding:3px 0}
+.lrow input[type=checkbox]{accent-color:var(--ink);margin:0}
+.lrow .where{font-size:10.5px;font-stretch:80%;letter-spacing:.06em;text-transform:uppercase;color:var(--faint)}
+.lrow.off{opacity:.45;cursor:default}
+.lrow .sub{display:block;font-size:11.5px;color:var(--muted)}
+.lrow .inline{gap:4px}
+.ptag{position:absolute;pointer-events:none;background:var(--panel);border:1px solid var(--line-strong);border-radius:4px;padding:4px 8px;font-family:var(--font-mono);font-size:12px;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.12);z-index:3}
+.ptag b,.tag3d b{font-weight:600}
+.ptag .d,.tag3d .d{color:var(--muted)}
+.ptag .pl,.tag3d .pl{font-family:var(--font-ui);font-weight:700;color:var(--accent);margin-right:2px}
 .tag3d{position:absolute;pointer-events:none;background:var(--panel);border:1px solid var(--line-strong);border-radius:4px;padding:4px 8px;font-family:var(--font-mono);font-size:12px;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.12);z-index:3}
 .tag3d b{font-weight:600}
 .tag3d .d{color:var(--muted)}
@@ -264,6 +279,34 @@ img{max-width:100%}
 
       <section class="sec insp" id="insp" aria-live="polite"></section>
 
+      <section class="sec" aria-labelledby="layersH">
+        <h2 id="layersH">Layers</h2>
+        <div class="layers">
+          <div class="lg">
+            <span class="eyebrow">While grading</span>
+            <label class="lrow"><input type="checkbox" id="oSlope"><span>Block slopes<span class="sub">Steepest slope and fall direction on each grid square</span></span><span class="where">Plan · 3D</span></label>
+            <label class="lrow"><input type="checkbox" id="oSpots"><span>Edited spot elevations<span class="sub">Labels on every point you’ve set</span></span><span class="where">Plan · 3D</span></label>
+            <label class="lrow" id="rowCf"><input type="checkbox" id="oCf"><span>Cut / fill depth<span class="sub">How far each block was raised or lowered</span></span><span class="where">Plan · 3D</span></label>
+            <label class="lrow"><input type="checkbox" id="oProb"><span>Problem slopes only<span class="sub" id="probSub">Highlight blocks under 1% or over 8.33%; fade the rest</span></span><span class="where">Plan · 3D</span></label>
+            <label class="lrow" id="rowGhost"><input type="checkbox" id="oGhost"><span>Existing ground ghost<span class="sub">See-through existing surface over the grading area</span></span><span class="where">3D</span></label>
+            <label class="lrow"><input type="checkbox" id="oFlow"><span>Flow arrows</span><span class="where">Plan</span></label>
+          </div>
+          <div class="lg">
+            <span class="eyebrow">Surface</span>
+            <div class="lrow"><input type="checkbox" id="oCont"><span class="inline"><label for="oCont">Contours every</label><input id="cInt" class="num sm" inputmode="decimal" aria-label="Contour interval"><span class="unit">m</span></span><span class="where">Plan · 3D</span></div>
+            <label class="lrow"><input type="checkbox" id="oNodes"><span>Grid point elevations</span><span class="where">Plan</span></label>
+            <label class="lrow"><input type="checkbox" id="o3dGrid"><span>Grid lines</span><span class="where">3D</span></label>
+          </div>
+          <div class="lg" id="lgDrawing">
+            <span class="eyebrow">Drawing</span>
+            <label class="lrow"><input type="checkbox" id="oEx"><span>Existing spot elevations</span><span class="where">Plan · 3D</span></label>
+            <label class="lrow"><input type="checkbox" id="oUl"><span>Proposed underlay</span><span class="where">Plan · 3D</span></label>
+            <label class="lrow"><input type="checkbox" id="oUlOut"><span>Underlay outside grading area</span><span class="where">Plan · 3D</span></label>
+            <label class="lrow"><input type="checkbox" id="oBg"><span>Other drawing linework</span><span class="where">Plan</span></label>
+          </div>
+        </div>
+      </section>
+
       <section class="sec">
         <h2>Slope by area</h2>
         <div class="distbar" id="distbar" aria-hidden="true"></div>
@@ -335,22 +378,11 @@ img{max-width:100%}
         <div id="gridWarn"></div>
       </section>
 
-      <section class="sec">
-        <h2>Display</h2>
-        <label class="chk"><input type="checkbox" id="oSlope"> Slope labels in blocks</label>
-        <label class="chk"><input type="checkbox" id="oNodes"> Grid point elevations</label>
-        <label class="chk"><input type="checkbox" id="oFlow"> Flow arrows</label>
-        <div class="chk"><input type="checkbox" id="oCont"><label for="oCont">Contours every</label><input id="cInt" class="num sm" inputmode="decimal" aria-label="Contour interval"><span class="unit">m</span></div>
-        <label class="chk"><input type="checkbox" id="oEx"> Existing spot elevations</label>
-        <label class="chk"><input type="checkbox" id="oUl"> Proposed underlay</label>
-        <label class="chk"><input type="checkbox" id="oUlOut"> Underlay outside grading area</label>
-        <label class="chk"><input type="checkbox" id="oBg"> Other drawing linework</label>
-        <label class="chk"><input type="checkbox" id="o3dGrid"> Grid lines on 3D model</label>
-      </section>
     </aside>
 
     <section class="view" id="planView" aria-label="Plan view">
       <canvas id="plan"></canvas>
+      <div class="ptag" id="ptag" hidden></div>
       <div class="vbar">
         <span class="vtitle">Plan</span>
         <div class="seg" id="modeSeg" role="group" aria-label="Plan tool">
@@ -363,6 +395,7 @@ img{max-width:100%}
 
     <section class="view" id="view3d" aria-label="3D terrain model">
       <div class="v3d" id="v3d"></div>
+      <canvas class="ov3d" id="ov3d" aria-hidden="true"></canvas>
       <div class="tag3d" id="tag3d" hidden></div>
       <div class="vbar">
         <span class="vtitle">3D</span>
@@ -370,7 +403,7 @@ img{max-width:100%}
         <select id="colorMode" aria-label="Colour terrain by"><option value="slope">Colour by slope</option><option value="elev">Colour by elevation</option><option value="cutfill">Colour by cut / fill</option></select>
         <button id="reset3d">Reset view</button>
       </div>
-      <div class="vstatus"><span>Drag a point up or down to regrade it (hold Alt for fine steps) · drag elsewhere to orbit · right-drag to pan · scroll to zoom</span></div>
+      <div class="vstatus"><span>Drag a point up or down to regrade it (Alt for fine steps) · middle-drag or drag empty space to orbit · Shift+middle or right-drag to pan · scroll zooms to the cursor</span></div>
       <div class="fallback" id="v3dMsg" hidden>The 3D model needs WebGL, which isn't available in this browser. The plan view still works.</div>
     </section>
   </main>
@@ -555,7 +588,7 @@ function normalizeUL(o) {
   o.lines.forEach((l, k) => { if (Array.isArray(l) && l.length >= 4 && l.length % 2 === 0 && l.every(fin)) { lines.push(l); li.push(Array.isArray(o.li) && fin(o.li[k]) ? o.li[k] : 0); } });
   return lines.length ? { name: String(o.name || 'Proposed plan').slice(0, 120), layers, li, lines } : null;
 }
-const DEFAULT_V = { show: { slopeLabels: true, nodeLabels: true, flow: true, contours: true, grid3d: true, exPts: true, bg: true, ul: true, ulOut: false }, exag: 3, colorMode: 'slope', layout: 'split' };
+const DEFAULT_V = { show: { slopeLabels: true, nodeLabels: true, flow: true, contours: true, grid3d: true, exPts: true, bg: true, ul: true, ulOut: false, spots: true, cf: false, prob: false, ghost: false }, exag: 3, colorMode: 'slope', layout: 'split' };
 function normalizeV(o) {
   o = o || {};
   return {
@@ -689,6 +722,7 @@ function triangulate(poly) {
   const r = []; for (let k = 1; k < n - 1; k++) r.push([0, k, k + 1]); return r;
 }
 const gaSum = (c) => c.ga.reduce((a, b) => a + b, 0);
+const isProb = (k) => k === 0 || k >= 4;
 function weights(f, t, fu, fv) {
   if (f === 0) return t === 0 ? [1 - fu, fu - fv, fv, 0] : [1 - fv, 0, fu, fv - fu];
   return t === 0 ? [1 - fu - fv, fu, 0, fv] : [0, 1 - fv, fu + fv - 1, 1 - fu];
@@ -1188,6 +1222,7 @@ function refreshColors() {
   C.sl = [C.s0, C.s1, C.s2, C.s3, C.s4, C.s5];
   const dark = hexRgb(C.site).reduce((a, b) => a + b, 0) < 384;
   C.fillMix = C.sl.map(h => mix(C.site, h, dark ? 0.62 : 0.55));
+  C.fadeFill = mix(C.site, C['ex-3d'], dark ? 0.35 : 0.22);
 }
 
 /* ---------------- plan view ---------------- */
@@ -1276,6 +1311,8 @@ function drawPlan() {
       G.cells.forEach((cell, ci) => {
         const cd = M.cellData[ci];
         for (const pc of cell.pieces) {
+          const fade = V.show.prob && !isProb(cd.tcls[pc.t]);
+          if (fade) { const col = C.fadeFill; pathPoly(pc.xy); ctx.fillStyle = col; ctx.strokeStyle = col; ctx.fill(); ctx.stroke(); continue; }
           if (mode === 'slope') {
             const col = C.fillMix[cd.tcls[pc.t]];
             pathPoly(pc.xy); ctx.fillStyle = col; ctx.strokeStyle = col; ctx.fill(); ctx.stroke();
@@ -1370,7 +1407,7 @@ function drawExtras() {
     if (x < -30 || x > W + 30 || y < -30 || y > HH + 30) return;
     ctx.fillStyle = C.ul; ctx.strokeStyle = C.site; ctx.lineWidth = 1.2;
     ctx.beginPath(); ctx.moveTo(x, y - 5); ctx.lineTo(x + 5, y); ctx.lineTo(x, y + 5); ctx.lineTo(x - 5, y); ctx.closePath(); ctx.fill(); ctx.stroke();
-    if (cpx >= 40 || (sel && sel.has(id)) || UI.hover === id) htext(f2(M.z[id]), x + 6, y - 5, `600 11px ${MONO}`, C.ul, 'left', 'bottom');
+    if ((V.show.spots && cpx >= 20) || (sel && sel.has(id)) || UI.hover === id) htext(f2(M.z[id]), x + 6, y - 5, `600 11px ${MONO}`, C.ul, 'left', 'bottom');
   });
 }
 function drawLineSel(li) {
@@ -1439,9 +1476,10 @@ function drawExPts() {
   }
 }
 function axisScreen() { return { u: [G.c, -G.sn], v: [-G.sn, -G.c] }; }
+function cellDepth(cell, cd) { return cell.area > 0 ? (cd.fill - cd.cut) / cell.area : 0; }
 function drawCellLabels(cpx) {
-  const showLabels = V.show.slopeLabels && cpx >= 64, showFlow = V.show.flow && cpx >= 30;
-  if ((!showLabels && !showFlow) || S.boundary.length < 3) return;
+  const showLabels = V.show.slopeLabels && cpx >= 64, showFlow = V.show.flow && cpx >= 30, showCf = V.show.cf && G.hasEx && cpx >= 46;
+  if ((!showLabels && !showFlow && !showCf) || S.boundary.length < 3) return;
   const ax = axisScreen(), s = G.s;
   const font = `500 ${cpx > 110 ? 11.5 : 10.5}px ${MONO}`;
   G.cells.forEach((cell, ci) => {
@@ -1460,6 +1498,10 @@ function drawCellLabels(cpx) {
         arrow(cx, cy, gx, -gy, showLabels ? Math.min(cpx * 0.16, 18) : Math.min(cpx * 0.36, 26), rgba(C.ink, 0.8), 1.4);
       }
     }
+    if (showCf) {
+      const d = cellDepth(cell, cd), txt = Math.abs(d) < 0.005 ? '0.00' : sgn2(d);
+      htext(txt, cx, cy + (showFlow ? 14 : 0), `600 ${cpx > 110 ? 11.5 : 10.5}px ${MONO}`, Math.abs(d) < 0.005 ? C.muted : d > 0 ? C.fill : C.cut, 'center');
+    }
     if (showLabels) {
       const off = s * 0.29;
       const lab = (val, du, dv, axis) => {
@@ -1475,7 +1517,7 @@ function drawCellLabels(cpx) {
   });
 }
 function drawNodes(cpx) {
-  const showInterp = V.show.nodeLabels && cpx >= 58, showSet = cpx >= 20, hasEx = G.hasEx;
+  const showInterp = V.show.nodeLabels && cpx >= 58, showSet = V.show.spots && cpx >= 20, hasEx = G.hasEx;
   const N = G.nx * G.ny;
   const selSet = UI.sel && UI.sel.kind === 'nodes' ? new Set(UI.sel.list) : null;
   for (let n = 0; n < N; n++) {
@@ -1500,12 +1542,24 @@ function drawNodes(cpx) {
       ctx.beginPath(); ctx.arc(x, y, 2.6, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
       if (showInterp || hot) htext(f2(M.z[n]), x + 5, y - 4, `italic 400 10.5px ${MONO}`, C.muted, 'left', 'bottom');
     }
-    if (hasEx && ((cpx >= 72 && (V.show.nodeLabels || isSet)) || hot)) htext('(' + f2(G.ez[n]) + ')', x + 6, y + 3, `italic 400 10px ${MONO}`, C['ex-ink'], 'left', 'top');
+    if (hasEx && ((cpx >= 72 && (V.show.nodeLabels || (isSet && V.show.spots))) || hot)) htext('(' + f2(G.ez[n]) + ')', x + 6, y + 3, `italic 400 10px ${MONO}`, C['ex-ink'], 'left', 'top');
   }
   if (UI.hover >= 0 && UI.mode === 'select') {
     const [x, y] = w2s(...vWorld(UI.hover));
     ctx.strokeStyle = rgba(C.accent, 0.55); ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, 8, 0, Math.PI * 2); ctx.stroke();
   }
+}
+function ptLetter(k) { let s = ''; k++; while (k > 0) { const m = (k - 1) % 26; s = String.fromCharCode(65 + m) + s; k = Math.floor((k - 1) / 26); } return s; }
+function selLetter(id) {
+  const sel = UI.sel;
+  if (!sel || sel.kind !== 'nodes' || sel.list.length < 2) return '';
+  const k = sel.list.indexOf(id); return k >= 0 ? ptLetter(k) : '';
+}
+function letterBadge(c, txt, x, y) {
+  const r = txt.length > 1 ? 9 : 7.5;
+  c.fillStyle = C.accent; c.strokeStyle = C.site; c.lineWidth = 1.5;
+  c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fill(); c.stroke();
+  c.fillStyle = '#fff'; c.font = `700 ${txt.length > 1 ? 9 : 10.5}px ${UIF}`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(txt, x, y + 0.5);
 }
 function drawSelection() {
   const sel = UI.sel; if (!sel) return;
@@ -1526,14 +1580,13 @@ function drawSelection() {
     sel.list.forEach((n, k) => {
       const [x, y] = w2s(...vWorld(n));
       ctx.strokeStyle = C.accent; ctx.lineWidth = 2.2; ctx.beginPath(); ctx.arc(x, y, 8.5, 0, Math.PI * 2); ctx.stroke();
-      if (sel.list.length === 2) {
-        ctx.fillStyle = C.accent; ctx.beginPath(); ctx.arc(x - 10, y + 10, 7, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = '#fff'; ctx.font = `700 9.5px ${UIF}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(String(k + 1), x - 10, y + 10.5);
-      }
+      if (sel.list.length >= 2) letterBadge(ctx, ptLetter(k), x - 11, y + 11);
     });
     if (sel.list.length === 2) {
       const [ax, ay] = w2s(...vWorld(sel.list[0])), [bx, by] = w2s(...vWorld(sel.list[1]));
       ctx.strokeStyle = C.accent; ctx.lineWidth = 1.4; ctx.setLineDash([5, 4]); ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke(); ctx.setLineDash([]);
+      const L = Math.hypot(bx - ax, by - ay);
+      if (L > 40) arrow((ax + bx) / 2, (ay + by) / 2, (bx - ax) / L, (by - ay) / L, 14, C.accent, 1.6);
     }
   } else if (sel.kind === 'cell') {
     const cell = G.cells[sel.c]; if (!cell) return; const s = G.s;
@@ -1741,7 +1794,7 @@ function endPointer(e) {
 }
 PC.addEventListener('pointerup', endPointer);
 PC.addEventListener('pointercancel', (e) => { P.pointers.delete(e.pointerId); P.down = null; P.action = null; UI.box = null; requestDraw(); });
-PC.addEventListener('pointerleave', () => { if (!P.down) { UI.hover = -1; UI.cursor = null; UI.snapPt = null; UI.ulHover = null; $('#readout').textContent = ''; requestDraw(); } });
+PC.addEventListener('pointerleave', () => { $('#ptag').hidden = true; if (!P.down) { UI.hover = -1; UI.cursor = null; UI.snapPt = null; UI.ulHover = null; $('#readout').textContent = ''; requestDraw(); } });
 PC.addEventListener('wheel', (e) => { e.preventDefault(); const m = mpos(e); zoomAt(m.x, m.y, Math.exp(-e.deltaY * 0.0015)); }, { passive: false });
 PC.addEventListener('dblclick', () => { if (UI.drawing && UI.drawing.length >= 3) closeDrawing(); });
 PC.addEventListener('contextmenu', (e) => e.preventDefault());
@@ -1770,6 +1823,18 @@ function updateHover(m) {
     }
   } else if (EXI && pip(wx, wy, EXI.hull)) txt += `   existing ${exAt(wx, wy).toFixed(2)}`;
   $('#readout').textContent = txt;
+  const pt = $('#ptag');
+  let ht = null;
+  if (UI.mode === 'select' && G && !G.tooMany && M) {
+    if (UI.hover >= 0) ht = nodeTagHtml({ id: UI.hover });
+    else if (UI.ulHover && UI.ulHover.kind === 'pt' && pip(UI.ulHover.x, UI.ulHover.y, G.dom)) ht = nodeTagHtml({ pt: [UI.ulHover.x, UI.ulHover.y] }).replace('drag to set', 'click to set');
+  }
+  if (ht && !P.down) {
+    pt.innerHTML = ht; pt.hidden = false;
+    const wd = pt.offsetWidth || 120; let x = m.x + 14, y = m.y - 34;
+    if (x + wd > W - 6) x = m.x - wd - 14;
+    pt.style.left = Math.max(6, x) + 'px'; pt.style.top = Math.max(40, y) + 'px';
+  } else pt.hidden = true;
   requestDraw();
 }
 function handleClick(m, shift, ptype) {
@@ -1885,6 +1950,7 @@ function renderStats() {
   $('#stats').innerHTML = it.map(([k, v, c]) => `<div class="stat"><span class="k">${k}</span><span class="v${c ? ' ' + c : ''}">${v}</span></div>`).join('');
 }
 function renderLegend() {
+  $('#probSub').textContent = `Highlight blocks under ${S.thresholds[0]}% or over ${S.thresholds[3]}%; fade the rest`;
   const th = S.thresholds, ca = M ? M.classArea : [0, 0, 0, 0, 0, 0], tot = ca.reduce((a, b) => a + b, 0);
   $('#distbar').innerHTML = tot ? ca.map((a, k) => a > 0 ? `<span style="width:${(a / tot * 100).toFixed(2)}%;background:var(--s${k})"></span>` : '').join('') : '';
   const rg = (k) => k === 0 ? `< ${th[0]}%` : k === 5 ? `> ${th[4]}%` : `${th[k - 1]}–${th[k]}%`;
@@ -2037,8 +2103,8 @@ function renderInspector() {
     if (sel.list.length === 2 && L.length === 2) {
       const [a, b] = L, [ax, ay] = vWorld(a), [bx, by] = vWorld(b), dist = Math.hypot(bx - ax, by - ay), g = (M.z[b] - M.z[a]) / dist;
       pair = `
-        <dl class="kv"><dt>Point 1 → 2</dt><dd>${dist.toFixed(2)} m</dd><dt>Change</dt><dd>${sgn2(M.z[b] - M.z[a])} m</dd><dt>Slope</dt><dd>${g >= 0 ? 'rises' : 'falls'} ${fp(g)} · ${ratio(g)}</dd></dl>
-        <div><div class="eyebrow" style="margin-bottom:4px">Grade point 2 from point 1</div>
+        <dl class="kv"><dt>A → B</dt><dd>${dist.toFixed(2)} m</dd><dt>Change</dt><dd>${sgn2(M.z[b] - M.z[a])} m</dd><dt>Slope</dt><dd>${g >= 0 ? 'rises' : 'falls'} ${fp(g)} · ${ratio(g)}</dd></dl>
+        <div><div class="eyebrow" style="margin-bottom:4px">Grade B from A</div>
         <div class="inline"><input id="gradePct" class="num sm" inputmode="decimal" value="2.0" aria-label="Slope percent"><span class="unit">%</span>
         <select id="gradeDir" aria-label="Direction"><option value="-1">falling</option><option value="1">rising</option></select>
         <button class="primary" data-act="grade">Apply</button></div></div>`;
@@ -2047,9 +2113,10 @@ function renderInspector() {
       <div class="ihead"><span class="eyebrow">${sel.list.length} grid points</span><span class="tags"><span class="tag">${nSet} set</span>${locked ? `<span class="tag ex">${locked} locked</span>` : ''}</span></div>
       <div class="field"><label for="multiZ">Set all to</label><div class="inline"><input id="multiZ" class="num" inputmode="decimal" placeholder="100.00"><span class="unit">m</span><button data-act="setall" class="small">Set</button></div></div>
       <div class="field"><label for="multiD">Raise / lower</label><div class="inline"><input id="multiD" class="num" inputmode="decimal" placeholder="+0.10"><span class="unit">m</span><button data-act="raise" class="small">Apply</button></div></div>
+      <dl class="kv">${sel.list.slice(0, 8).map((n, k) => `<dt><span class="pl" style="color:var(--accent);font-weight:700">${ptLetter(k)}</span> ${n >= G.N ? 'underlay' : M.set[n] ? 'set' : editable(n) ? 'interpolated' : 'existing'}</dt><dd>${f2(M.z[n])} m</dd>`).join('')}${sel.list.length > 8 ? `<dt>…</dt><dd>${sel.list.length - 8} more</dd>` : ''}</dl>
       ${pair}
       <p class="note">Drag any selected point in 3D to move them all together.</p>
-      <div class="btnrow">${nSet ? '<button data-act="clearall">Remove set spots</button>' : ''}<button class="ghost" data-act="deselect">Clear selection</button></div>
+      <div class="btnrow">${sel.list.length === 2 ? '<button data-act="swapab">Swap A and B</button>' : ''}${nSet ? '<button data-act="clearall">Remove set spots</button>' : ''}<button class="ghost" data-act="deselect">Clear selection</button></div>
       <p class="msg" id="inspMsg" role="status"></p>`;
   } else if (sel.kind === 'cell') {
     const cell = G.cells[sel.c], cd = M.cellData[sel.c], s = G.s, [a, b, c, d] = cd.z;
@@ -2113,6 +2180,7 @@ function nudgeSel(d) {
 function doAct(act, btn) {
   const sel = UI.sel;
   if (act === 'deselect') { UI.sel = null; invalidate('sel'); return; }
+  if (act === 'swapab' && sel && sel.kind === 'nodes') { sel.list.reverse(); invalidate('sel'); render3D(); return; }
   if (act === 'flip' && sel && sel.kind === 'cell') {
     const cell = G.cells[sel.c], key = cell.i + ',' + cell.j;
     if (S.flips[key]) delete S.flips[key]; else S.flips[key] = 1;
@@ -2204,6 +2272,12 @@ function syncControls() {
   $('#oEx').closest('label').hidden = !EXI; $('#oBg').closest('label').hidden = !BG;
   $('#oUl').checked = V.show.ul; $('#oUlOut').checked = V.show.ulOut;
   $('#oUl').closest('label').hidden = !UL; $('#oUlOut').closest('label').hidden = !UL;
+  $('#lgDrawing').hidden = !EXI && !UL && !BG;
+  $('#oSpots').checked = V.show.spots; $('#oProb').checked = V.show.prob;
+  $('#oCf').checked = V.show.cf && !!EXI; $('#oCf').disabled = !EXI; $('#rowCf').classList.toggle('off', !EXI);
+  $('#oGhost').checked = V.show.ghost && !!EXI; $('#oGhost').disabled = !EXI; $('#rowGhost').classList.toggle('off', !EXI);
+  $('#rowCf').title = EXI ? '' : 'Import existing grades to compare against'; $('#rowGhost').title = $('#rowCf').title;
+  $('#probSub').textContent = `Highlight blocks under ${S.thresholds[0]}% or over ${S.thresholds[3]}%; fade the rest`;
   $('#exag').value = V.exag; $('#exagOut').textContent = V.exag + '×';
   $('#colorMode').querySelector('[value="cutfill"]').disabled = !EXI;
   $('#colorMode').value = V.colorMode === 'cutfill' && !EXI ? 'slope' : V.colorMode;
@@ -2248,8 +2322,9 @@ for (let k = 0; k < 5; k++) $('#th' + k).addEventListener('change', () => {
   if (!okv) { $('#thMsg').textContent = 'Breaks must be positive and increase left to right.'; return; }
   $('#thMsg').textContent = ''; S.thresholds = vals; commit(); invalidate('surf');
 });
-const showMap = { oSlope: 'slopeLabels', oNodes: 'nodeLabels', oFlow: 'flow', oCont: 'contours', o3dGrid: 'grid3d', oEx: 'exPts', oBg: 'bg', oUl: 'ul', oUlOut: 'ulOut' };
-Object.keys(showMap).forEach(id => $('#' + id).addEventListener('change', (e) => { V.show[showMap[id]] = e.target.checked; persist(); invalidate(['oCont', 'o3dGrid', 'oEx', 'oUl', 'oUlOut'].includes(id) ? 'd3' : 'side'); }));
+const showMap = { oSlope: 'slopeLabels', oNodes: 'nodeLabels', oFlow: 'flow', oCont: 'contours', o3dGrid: 'grid3d', oEx: 'exPts', oBg: 'bg', oUl: 'ul', oUlOut: 'ulOut', oSpots: 'spots', oCf: 'cf', oProb: 'prob', oGhost: 'ghost' };
+const show3dRebuild = ['oCont', 'o3dGrid', 'oEx', 'oUl', 'oUlOut', 'oProb', 'oGhost'];
+Object.keys(showMap).forEach(id => $('#' + id).addEventListener('change', (e) => { V.show[showMap[id]] = e.target.checked; persist(); invalidate(show3dRebuild.includes(id) ? 'd3' : 'side'); render3D(); }));
 let ulArm = 0;
 $('#ulClear').addEventListener('click', (e) => {
   const btn = e.currentTarget;
@@ -2928,9 +3003,50 @@ function init3D() {
   if (THREE.OrbitControls) {
     R.controls = new THREE.OrbitControls(R.camera, R.renderer.domElement);
     R.controls.maxPolarAngle = Math.PI * 0.495;
+    // SketchUp-style: middle-drag orbits (Shift+middle pans), right-drag pans, left-drag on empty space orbits
+    R.controls.mouseButtons = { LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.ROTATE, RIGHT: THREE.MOUSE.PAN };
+    R.controls.screenSpacePanning = true;
     R.controls.addEventListener('change', render3D);
   }
+  R.ray = new THREE.Raycaster();
+  // stop the browser's middle-click autoscroll
+  host3.addEventListener('mousedown', (e) => { if (e.button === 1) e.preventDefault(); });
+  host3.addEventListener('auxclick', (e) => { if (e.button === 1) e.preventDefault(); });
+  // zoom toward the point under the cursor (capture phase, so OrbitControls' centre zoom never sees the wheel)
+  host3.addEventListener('wheel', (e) => {
+    if (!R.ok) return;
+    e.preventDefault(); e.stopPropagation();
+    let dy = e.deltaY; if (e.deltaMode === 1) dy *= 16; else if (e.deltaMode === 2) dy *= 400;
+    zoomAt3D(e.clientX, e.clientY, Math.exp(Math.max(-300, Math.min(300, dy)) * 0.0015));
+  }, { capture: true, passive: false });
   R.ok = true; resize3D();
+}
+function cursorPoint3D(clientX, clientY) {
+  const rect = R.renderer.domElement.getBoundingClientRect();
+  const ndc = new THREE.Vector2(((clientX - rect.left) / rect.width) * 2 - 1, -((clientY - rect.top) / rect.height) * 2 + 1);
+  R.ray.setFromCamera(ndc, R.camera);
+  if (R.terrain) { const hit = R.ray.intersectObject(R.terrain, false)[0]; if (hit) return hit.point; }
+  const tgt = R.controls ? R.controls.target : new THREE.Vector3();
+  const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -tgt.y), p = new THREE.Vector3();
+  if (R.ray.ray.intersectPlane(plane, p) && p.distanceTo(R.camera.position) < R.camera.far * 0.9) return p;
+  return null;
+}
+function zoomAt3D(clientX, clientY, f) {
+  const cam = R.camera, tgt = R.controls ? R.controls.target : null;
+  const P = cursorPoint3D(clientX, clientY);
+  const span = R.map ? R.map.span : 50, minD = Math.max(0.3, span * 0.01), maxD = span * 12;
+  if (!P || !tgt) {
+    if (!tgt) return;
+    const off = cam.position.clone().sub(tgt), d = Math.min(maxD, Math.max(minD, off.length() * f));
+    cam.position.copy(tgt).add(off.setLength(d)); R.controls.update(); return;
+  }
+  const dist = cam.position.distanceTo(P);
+  if (f < 1 && dist * f < minD) f = minD / dist;
+  if (f > 1 && cam.position.distanceTo(tgt) * f > maxD) f = maxD / Math.max(1e-6, cam.position.distanceTo(tgt));
+  if (Math.abs(f - 1) < 1e-4) return;
+  cam.position.sub(P).multiplyScalar(f).add(P);
+  tgt.sub(P).multiplyScalar(f).add(P);
+  R.controls.update();
 }
 function resize3D() {
   if (!R.ok) return;
@@ -2938,7 +3054,100 @@ function resize3D() {
   if (w < 2 || h < 2) return;
   R.renderer.setSize(w, h, false); R.camera.aspect = w / h; R.camera.updateProjectionMatrix(); render3D();
 }
-function render3D() { if (R.ok) R.renderer.render(R.scene, R.camera); }
+function render3D() { if (!R.ok) return; R.renderer.render(R.scene, R.camera); drawOverlay3D(); }
+const OV = $('#ov3d'), octx = OV.getContext('2d');
+function otext(t, x, y, font, color, align, base) {
+  octx.font = font; octx.textAlign = align || 'center'; octx.textBaseline = base || 'middle';
+  octx.lineJoin = 'round'; octx.lineWidth = 3.4; octx.strokeStyle = C.site; octx.strokeText(t, x, y);
+  octx.fillStyle = color; octx.fillText(t, x, y);
+  return octx.measureText(t).width;
+}
+function oarrow(x, y, dx, dy, len, color) {
+  const hx = x + dx * len / 2, hy = y + dy * len / 2, tx = x - dx * len / 2, ty = y - dy * len / 2, hs = Math.min(5, len * 0.45);
+  for (const [col, lw] of [[C.site, 3.4], [color, 1.4]]) {
+    octx.strokeStyle = col; octx.lineWidth = lw; octx.lineCap = 'round';
+    octx.beginPath(); octx.moveTo(tx, ty); octx.lineTo(hx, hy);
+    octx.moveTo(hx - dx * hs - dy * hs * 0.6, hy - dy * hs + dx * hs * 0.6); octx.lineTo(hx, hy); octx.lineTo(hx - dx * hs + dy * hs * 0.6, hy - dy * hs - dx * hs * 0.6);
+    octx.stroke();
+  }
+}
+function drawOverlay3D() {
+  const w = host3.clientWidth, h = host3.clientHeight, dp = Math.min(window.devicePixelRatio || 1, 2);
+  if (OV.width !== Math.round(w * dp) || OV.height !== Math.round(h * dp)) { OV.width = Math.max(1, Math.round(w * dp)); OV.height = Math.max(1, Math.round(h * dp)); }
+  octx.setTransform(dp, 0, 0, dp, 0, 0); octx.clearRect(0, 0, w, h);
+  if (!R.map || !G || G.tooMany || !M || w < 10) return;
+  const { cx, cy, skirt, ex, zmin } = R.map, Y = (z) => (z - zmin) * ex + skirt, v = new THREE.Vector3();
+  const proj = (x, y, ys) => { v.set(x - cx, ys, -(y - cy)).project(R.camera); if (v.z > 1 || v.z < -1) return null; const sx = (v.x + 1) / 2 * w, sy = (1 - v.y) / 2 * h; return sx < -40 || sx > w + 40 || sy < -40 || sy > h + 40 ? null : [sx, sy]; };
+  const occ = new Set(), CW = 46, CH = 15;
+  const claim = (x, y, wd, ht) => {
+    const x0 = Math.floor((x - wd / 2) / CW), x1 = Math.floor((x + wd / 2) / CW), y0 = Math.floor((y - ht / 2) / CH), y1 = Math.floor((y + ht / 2) / CH);
+    for (let i = x0; i <= x1; i++) for (let j = y0; j <= y1; j++) if (occ.has(i + ',' + j)) return false;
+    for (let i = x0; i <= x1; i++) for (let j = y0; j <= y1; j++) occ.add(i + ',' + j);
+    return true;
+  };
+  const sel = UI.sel && UI.sel.kind === 'nodes' ? UI.sel.list : [];
+  const pinTop = (id) => Y(M.z[id]) + (M.set[id] && editable(id) ? R.pinR * 5 : R.pinR);
+  // letters on selected points come first so nothing covers them
+  const badges = [];
+  if (sel.length >= 2) sel.forEach((id, k) => { const [x, y] = vWorld(id), p = proj(x, y, pinTop(id)); if (p) { badges.push([p, ptLetter(k)]); claim(p[0] - 12, p[1] - 12, 22, 20); } });
+  // edited spot elevations
+  if (V.show.spots) {
+    let n = 0;
+    for (let id = 0; id < M.set.length && n < 500; id++) {
+      if (!M.set[id] || (id < G.N && (!G.nodeActive[id] || !editable(id) || (!G.hasEx && !G.nodeIn[id]))) || (id >= G.N && !G.xActive[id - G.N])) continue;
+      const [x, y] = vWorld(id), p = proj(x, y, pinTop(id)); if (!p) continue;
+      const txt = f2(M.z[id]);
+      octx.font = `600 11.5px ${MONO}`; const tw = octx.measureText(txt).width;
+      if (!claim(p[0] + 7 + tw / 2, p[1] - 9, tw + 6, 15)) continue;
+      otext(txt, p[0] + 7, p[1] - 9, `600 11.5px ${MONO}`, id >= G.N ? C.ul : C.ink, 'left'); n++;
+    }
+  }
+  // per-block slope and cut/fill
+  const showSl = V.show.slopeLabels, showCf = V.show.cf && G.hasEx;
+  if ((showSl || showCf) && (S.boundary.length >= 3 || !G.hasEx)) {
+    const s = G.s; let n = 0;
+    const cand = [];
+    G.cells.forEach((cell, ci) => {
+      if ((G.hasEx ? gaSum(cell) : cell.area) < s * s * 0.3) return;
+      const cu = (cell.i + 0.5) * s, cv = (cell.j + 0.5) * s, [wx, wy] = toWorld(cu, cv);
+      if (S.boundary.length >= 3 && !pip(wx, wy, S.boundary)) return;
+      const p = proj(wx, wy, Y(zAtLocal(cu, cv)) + R.pinR * 0.5); if (!p) return;
+      const [ex2, ey2] = toWorld(cu + s * 0.5, cv), q = proj(ex2, ey2, Y(zAtLocal(cu + s * 0.5, cv))); if (!q) return;
+      const px = Math.hypot(q[0] - p[0], q[1] - p[1]) * 2;
+      if (px < 34) return;
+      cand.push([px, ci, p, cu, cv, wx, wy]);
+    });
+    cand.sort((a, b) => b[0] - a[0]);
+    for (const [px, ci, p, cu, cv, wx, wy] of cand) {
+      if (n > 700) break;
+      const cell = G.cells[ci], cd = M.cellData[ci], lines = [];
+      if (showSl) {
+        const mag = Math.hypot(cd.su, cd.sv);
+        lines.push({ t: mag < 0.0002 ? 'flat' : fp(mag), c: C.ink, mag });
+      }
+      if (showCf && px >= (showSl ? 46 : 34)) {
+        const d = cellDepth(cell, cd);
+        lines.push({ t: Math.abs(d) < 0.005 ? '0.00' : sgn2(d), c: Math.abs(d) < 0.005 ? C.muted : d > 0 ? C.fill : C.cut });
+      }
+      if (!lines.length) continue;
+      const ht = lines.length * 14, wd = 58;
+      if (!claim(p[0], p[1], wd, ht)) continue;
+      lines.forEach((ln, k) => {
+        const y = p[1] - ht / 2 + 7 + k * 14;
+        if (ln.mag !== undefined && ln.mag >= 0.0002) {
+          const [gx, gy] = gradWorld(-cd.su / ln.mag, -cd.sv / ln.mag), r = Math.min(G.s * 0.35, 3 * G.s);
+          const a = proj(wx, wy, Y(zAtLocal(cu, cv))), b = proj(wx + gx * r * 0.5, wy + gy * r * 0.5, Y(zAtWorld(wx + gx * r * 0.5, wy + gy * r * 0.5)));
+          let dx = 0, dy = 1; if (a && b) { const L = Math.hypot(b[0] - a[0], b[1] - a[1]); if (L > 0.5) { dx = (b[0] - a[0]) / L; dy = (b[1] - a[1]) / L; } }
+          octx.font = `600 11px ${MONO}`; const tw = octx.measureText(ln.t).width;
+          otext(ln.t, p[0] + 7, y, `600 11px ${MONO}`, ln.c, 'center');
+          oarrow(p[0] + 7 - tw / 2 - 9, y, dx, dy, 11, ln.c);
+        } else otext(ln.t, p[0], y, `600 11px ${MONO}`, ln.c, 'center');
+      });
+      n++;
+    }
+  }
+  for (const [p, t] of badges) letterBadge(octx, t, p[0] - 12, p[1] - 12);
+}
 function disposeGroup(g) {
   g.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => m.dispose()); });
   while (g.children.length) g.remove(g.children[0]);
@@ -2991,6 +3200,7 @@ function build3D() {
   if (!R.ok) return;
   disposeGroup(R.group);
   R.scene.background = col3(C.view);
+  R.terrain = null;
   if (!G || G.tooMany || !M || !M.tris.length) { R.map = null; disposeGroup(R.selGroup); render3D(); return; }
   const dom = G.dom, hasEx = G.hasEx, mode = cmode();
   const [x0, y0, x1, y1] = bbox(dom);
@@ -2999,6 +3209,7 @@ function build3D() {
   R.map = { cx, cy, span, skirt, ex, zmin };
   const Y = (z) => (z - zmin) * ex + skirt;
   const zr = Math.max(M.zmax - M.zmin, 1e-6);
+  const fadeRGB = mixRgb(C['ex-3d'], C.site, 0.35).map(v => v / 255);
   const slopeRGB = C.sl.map(h => hexRgb(h).map(v => v / 255)), exRGB = hexRgb(C['ex-3d']).map(v => v / 255);
   const n = M.tris.length, pos = new Float32Array(n * 9), colr = new Float32Array(n * 9);
   M.tris.forEach((t, k) => {
@@ -3009,6 +3220,7 @@ function build3D() {
       pos.set([v[0], v[1], v[2]], k * 9 + m * 3);
       let c;
       if (hasEx && !t.g) c = mode === 'cutfill' ? cfRgb(C['ex-3d'], v[4]).map(x => x / 255) : exRGB;
+      else if (V.show.prob && !isProb(t.cls)) c = fadeRGB;
       else if (mode === 'slope') c = slopeRGB[t.cls];
       else if (mode === 'elev') c = ramp01((v[3] - zmin) / zr).map(x => x / 255);
       else c = cfRgb(C['ex-3d'], v[4]).map(x => x / 255);
@@ -3017,7 +3229,43 @@ function build3D() {
   });
   const tg = new THREE.BufferGeometry();
   tg.setAttribute('position', new THREE.BufferAttribute(pos, 3)); tg.setAttribute('color', new THREE.BufferAttribute(colr, 3)); tg.computeVertexNormals();
-  R.group.add(new THREE.Mesh(tg, new THREE.MeshLambertMaterial({ vertexColors: true, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 })));
+  R.terrain = new THREE.Mesh(tg, new THREE.MeshLambertMaterial({ vertexColors: true, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 }));
+  R.group.add(R.terrain);
+  // existing ground ghost: see-through existing surface, existing grid lines that show through, and cut/fill stems
+  if (hasEx && V.show.ghost && S.boundary.length >= 3) {
+    const gp = [];
+    for (const t of M.tris) {
+      if (!t.g) continue;
+      t.p.forEach((p, i) => gp.push(p[0] - cx, Y(p[2] - t.d[i]), -(p[1] - cy)));
+    }
+    if (gp.length) {
+      const gg = new THREE.BufferGeometry(); gg.setAttribute('position', new THREE.Float32BufferAttribute(gp, 3)); gg.computeVertexNormals();
+      const gm = new THREE.Mesh(gg, new THREE.MeshLambertMaterial({ color: col3(C['ex-ink']), transparent: true, opacity: 0.3, depthWrite: false, side: THREE.DoubleSide }));
+      gm.renderOrder = 3; R.group.add(gm);
+      const seen = new Set(), el = [], stCut = [], stFill = [];
+      for (const cell of G.cells) {
+        if (!gaSum(cell)) continue;
+        const ns = cell.nodes;
+        for (let k = 0; k < 4; k++) {
+          const a = ns[k], b = ns[(k + 1) % 4], key = a < b ? a + ',' + b : b + ',' + a;
+          if (seen.has(key) || !(G.nodeIn[a] || G.nodeIn[b])) continue; seen.add(key);
+          const [ax, ay] = nodeWorld(a), [bx, by] = nodeWorld(b);
+          el.push(ax - cx, Y(G.ez[a]), -(ay - cy), bx - cx, Y(G.ez[b]), -(by - cy));
+        }
+      }
+      for (let id = 0; id < G.N + G.X.length; id++) {
+        if (id < G.N && (!G.nodeActive[id] || !G.nodeIn[id])) continue;
+        if (id >= G.N && !G.xActive[id - G.N]) continue;
+        const d = M.z[id] - vEz(id); if (Math.abs(d) < 0.02) continue;
+        const [x, y] = vWorld(id);
+        (d > 0 ? stFill : stCut).push(x - cx, Y(M.z[id]), -(y - cy), x - cx, Y(vEz(id)), -(y - cy));
+      }
+      const thru = (arr, color, op) => { const l = lineSegs(arr, color, op); l.material.depthTest = false; l.material.transparent = true; l.renderOrder = 4; return l; };
+      if (el.length) R.group.add(thru(el, col3(C['ex-ink']), 0.45));
+      if (stCut.length) R.group.add(thru(stCut, col3(C.cut), 0.9));
+      if (stFill.length) R.group.add(thru(stFill, col3(C.fill), 0.9));
+    }
+  }
   // skirt
   const sp = [], sc = [], top = hexRgb(C.soil).map(v => v / 255), bot = hexRgb(C['soil-deep']).map(v => v / 255), rim = [];
   for (let k = 0; k < dom.length; k++) {
@@ -3244,9 +3492,9 @@ function showTag(clientX, clientY, html) {
 function hideTag() { tag3.hidden = true; }
 function tEz(t) { return t.pt ? exAt(t.pt[0], t.pt[1]) : vEz(t.id); }
 function nodeTagHtml(t) {
-  const z = tZ(t);
-  if (!tEditable(t)) return `<b>${f2(z)}</b> <span class="d">existing · locked</span>`;
-  let s = `<b>${f2(z)}</b> <span class="d">${t.pt ? 'underlay corner · drag to set' : t.id >= G.N ? 'underlay point' : M.set[t.id] ? 'set' : 'interpolated'}</span>`;
+  const z = tZ(t), lt = t.pt ? '' : selLetter(t.id), pre = lt ? `<span class="pl">Point ${lt}</span> ` : '';
+  if (!tEditable(t)) return `${pre}<b>${f2(z)}</b> <span class="d">existing · locked</span>`;
+  let s = `${pre}<b>${f2(z)}</b> <span class="d">${t.pt ? 'underlay corner · drag to set' : t.id >= G.N ? 'underlay point' : M.set[t.id] ? 'set' : 'interpolated'}</span>`;
   if (G.hasEx) s += ` <span class="d">· ${changeLine(z - tEz(t))}</span>`;
   return s;
 }
@@ -3295,7 +3543,8 @@ host3.addEventListener('pointermove', (e) => {
         invalidate('drag');
       }
       const z = d.base[0] + dz, ti = d.group.findIndex(t => tKey(t) === tKey(d.t)), zz = ti >= 0 ? d.base[ti] + dz : z;
-      let html = `<b>${f2(zz)}</b> <span class="d">${dz >= 0 ? '▲' : '▼'} ${sgn2(dz)}</span>`;
+      const lt = d.t.pt ? '' : selLetter(d.t.id);
+      let html = `${lt ? `<span class="pl">Point ${lt}</span> ` : ''}<b>${f2(zz)}</b> <span class="d">${dz >= 0 ? '▲' : '▼'} ${sgn2(dz)}</span>`;
       if (G.hasEx) html += ` <span class="d">· ${changeLine(zz - d.ez)}</span>`;
       if (d.group.length > 1) html += ` <span class="d">· ${d.group.length} points</span>`;
       showTag(e.clientX, e.clientY, html);
